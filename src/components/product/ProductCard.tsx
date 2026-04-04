@@ -1,4 +1,5 @@
-import { FaHeart, FaRegHeart, FaShoppingCart, FaStar } from "react-icons/fa";
+import { FaHeart, FaRegHeart, FaShoppingCart, FaStar, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 import { useCart } from "@/context/CartContext";
 
 export interface Product {
@@ -21,10 +22,15 @@ interface ProductCardProps {
 
 function ProductCard({ product, toggleWishlist, isWishlisted }: ProductCardProps) {
   const { addToCart } = useCart();
+  const navigate = useNavigate();
 
   const discount = product.originalPrice
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
+
+  const handleCardClick = () => {
+    navigate(`/product/${product.id}`);
+  };
 
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden group transition-all duration-300 hover:border-primary/50 hover:shadow-[var(--glow-primary-sm)] relative">
@@ -34,46 +40,60 @@ function ProductCard({ product, toggleWishlist, isWishlisted }: ProductCardProps
         </span>
       )}
       {discount > 0 && (
-        <span className="absolute top-3 right-3 bg-destructive text-destructive-foreground text-[0.65rem] font-heading font-bold px-2 py-0.5 rounded-sm z-10">
+        <span className="absolute top-3 right-12 bg-destructive text-destructive-foreground text-[0.65rem] font-heading font-bold px-2 py-0.5 rounded-sm z-10">
           -{discount}%
         </span>
       )}
 
-      <div className="relative h-48 bg-secondary flex items-center justify-center overflow-hidden">
+      <div className="relative h-48 bg-secondary flex items-center justify-center overflow-hidden cursor-pointer" onClick={handleCardClick}>
         <img src={product.image} alt={product.name} className="max-h-full max-w-full object-contain p-4 group-hover:scale-110 transition-transform duration-500" />
         <button
-          onClick={() => toggleWishlist(product.id)}
+          onClick={(e) => { e.stopPropagation(); toggleWishlist(product.id); }}
           className="absolute top-3 right-3 bg-transparent border-none text-muted-foreground hover:text-primary transition-colors cursor-pointer text-lg z-10"
         >
           {isWishlisted ? <FaHeart className="text-primary" /> : <FaRegHeart />}
         </button>
       </div>
 
-      <div className="p-4">
+      <div className="p-4 cursor-pointer" onClick={handleCardClick}>
         <p className="text-xs text-primary font-heading uppercase tracking-wider mb-1">{product.category}</p>
         <h3 className="font-body font-semibold text-foreground text-sm mb-2 line-clamp-2 min-h-[2.5rem]">{product.name}</h3>
         <div className="flex items-center gap-1 mb-2">
           {Array.from({ length: 5 }, (_, i) => (
-            <FaStar key={i} className={i < product.rating ? "text-primary text-xs" : "text-muted text-xs"} />
+            <FaStar key={i} className={i < product.rating ? "text-yellow-400 text-xs" : "text-muted text-xs"} />
           ))}
         </div>
-        <div className="flex items-center gap-2 mb-3">
-          <span className="font-heading font-bold text-foreground text-lg">₹{product.price.toLocaleString()}</span>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="font-heading font-bold text-foreground text-lg">₹{product.price.toLocaleString("en-IN")}</span>
           {product.originalPrice && (
-            <span className="text-muted-foreground line-through text-sm">₹{product.originalPrice.toLocaleString()}</span>
+            <span className="text-muted-foreground line-through text-sm">₹{product.originalPrice.toLocaleString("en-IN")}</span>
           )}
         </div>
-        <button
-          onClick={() => addToCart(product)}
-          disabled={!product.inStock}
-          className={`w-full py-2 rounded-md font-heading font-bold text-xs uppercase flex items-center justify-center gap-2 transition-all cursor-pointer border-none ${
-            product.inStock
-              ? "bg-primary text-primary-foreground hover:shadow-[var(--glow-primary)]"
-              : "bg-muted text-muted-foreground cursor-not-allowed"
-          }`}
-        >
-          <FaShoppingCart /> {product.inStock ? "Add to Cart" : "Out of Stock"}
-        </button>
+        <div className="mb-3">
+          {product.inStock ? (
+            <span className="flex items-center gap-1 text-green-400 text-xs font-heading"><FaCheckCircle size={10} /> In Stock</span>
+          ) : (
+            <span className="flex items-center gap-1 text-destructive text-xs font-heading"><FaTimesCircle size={10} /> Out of Stock</span>
+          )}
+        </div>
+      </div>
+
+      <div className="px-4 pb-4">
+        {product.inStock ? (
+          <button
+            onClick={(e) => { e.stopPropagation(); addToCart(product); }}
+            className="w-full py-2 rounded-md font-heading font-bold text-xs uppercase flex items-center justify-center gap-2 transition-all cursor-pointer border-none bg-primary text-primary-foreground hover:shadow-[var(--glow-primary)]"
+          >
+            <FaShoppingCart /> Add to Cart
+          </button>
+        ) : (
+          <button
+            onClick={() => alert("We will notify you when this item is back in stock!")}
+            className="w-full py-2 rounded-md font-heading font-bold text-xs uppercase flex items-center justify-center gap-2 transition-all cursor-pointer border-none bg-muted text-muted-foreground"
+          >
+            Notify Me
+          </button>
+        )}
       </div>
     </div>
   );
