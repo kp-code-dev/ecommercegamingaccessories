@@ -8,6 +8,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import Index from "./pages/Index";
 import Store from "./pages/Store";
 import CustomBuilds from "./pages/CustomBuilds";
+import ProductDetail from "./pages/ProductDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
