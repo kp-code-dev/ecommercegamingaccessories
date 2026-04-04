@@ -9,6 +9,7 @@ interface CartContextType {
   cart: CartItem[];
   addToCart: (product: Product) => void;
   removeFromCart: (id: string) => void;
+  decreaseQuantity: (id: string) => void;
   clearCart: () => void;
   cartCount: number;
   cartTotal: number;
@@ -29,6 +30,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const decreaseQuantity = (id: string) => {
+    setCart(prev =>
+      prev.map(item =>
+        item.id === id ? { ...item, quantity: Math.max(1, item.quantity - 1) } : item
+      )
+    );
+  };
+
   const removeFromCart = (id: string) => {
     setCart(prev => prev.filter(item => item.id !== id));
   };
@@ -39,7 +48,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const cartTotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, clearCart, cartCount, cartTotal }}>
+    <CartContext.Provider value={{ cart, addToCart, removeFromCart, decreaseQuantity, clearCart, cartCount, cartTotal }}>
       {children}
     </CartContext.Provider>
   );
