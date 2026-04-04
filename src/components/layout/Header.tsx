@@ -5,6 +5,7 @@ import { FaSearch, FaBars } from "react-icons/fa";
 import { BiSolidUserCircle } from "react-icons/bi";
 import { IoMdLogOut } from "react-icons/io";
 import { useCart } from "@/context/CartContext";
+import CartDropdown from "@/components/cart/CartDropdown";
 import { useAuth } from "@/context/AuthContext";
 import AuthModal from "@/components/auth/AuthModal";
 
