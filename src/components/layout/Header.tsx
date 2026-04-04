@@ -102,12 +102,7 @@ function Header() {
               </span>
             )}
           </button>
-          {cartOpen && (
-            <div className="absolute top-12 right-0 w-72 bg-card border border-border rounded-lg shadow-xl p-4 z-50">
-              <p className="text-muted-foreground text-sm font-body">Your cart is empty</p>
-              <Link to="/store" className="text-primary text-sm font-body hover:underline" onClick={() => setCartOpen(false)}>Browse Store →</Link>
-            </div>
-          )}
+          {cartOpen && <CartDropdown onClose={() => setCartOpen(false)} />}
         </div>
 
         <div className="relative" ref={profileRef}>
