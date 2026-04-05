@@ -1,4 +1,4 @@
-import { FaHeart, FaRegHeart, FaShoppingCart, FaStar, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
+import { FaHeart, FaRegHeart, FaShoppingCart, FaStar, FaStarHalfAlt, FaRegStar, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "@/context/CartContext";
 
@@ -9,9 +9,11 @@ export interface Product {
   originalPrice?: number;
   image: string;
   rating: number;
+  reviews?: number;
   inStock: boolean;
   bestSeller?: boolean;
   category: string;
+  brand?: string;
 }
 
 interface ProductCardProps {
@@ -30,6 +32,16 @@ function ProductCard({ product, toggleWishlist, isWishlisted }: ProductCardProps
 
   const handleCardClick = () => {
     navigate(`/product/${product.id}`);
+  };
+
+  const renderStars = (rating: number) => {
+    const stars = [];
+    for (let i = 1; i <= 5; i++) {
+      if (rating >= i) stars.push(<FaStar key={i} className="text-yellow-400 text-xs" />);
+      else if (rating >= i - 0.5) stars.push(<FaStarHalfAlt key={i} className="text-yellow-400 text-xs" />);
+      else stars.push(<FaRegStar key={i} className="text-muted text-xs" />);
+    }
+    return stars;
   };
 
   return (
@@ -56,12 +68,16 @@ function ProductCard({ product, toggleWishlist, isWishlisted }: ProductCardProps
       </div>
 
       <div className="p-4 cursor-pointer" onClick={handleCardClick}>
+        {product.brand && (
+          <p className="text-[0.65rem] text-muted-foreground font-heading uppercase tracking-wider mb-0.5">{product.brand}</p>
+        )}
         <p className="text-xs text-primary font-heading uppercase tracking-wider mb-1">{product.category}</p>
         <h3 className="font-body font-semibold text-foreground text-sm mb-2 line-clamp-2 min-h-[2.5rem]">{product.name}</h3>
         <div className="flex items-center gap-1 mb-2">
-          {Array.from({ length: 5 }, (_, i) => (
-            <FaStar key={i} className={i < product.rating ? "text-yellow-400 text-xs" : "text-muted text-xs"} />
-          ))}
+          {renderStars(product.rating)}
+          {product.reviews !== undefined && (
+            <span className="text-muted-foreground text-[0.65rem] ml-1">({product.reviews.toLocaleString("en-IN")})</span>
+          )}
         </div>
         <div className="flex items-center gap-2 mb-1">
           <span className="font-heading font-bold text-foreground text-lg">₹{product.price.toLocaleString("en-IN")}</span>

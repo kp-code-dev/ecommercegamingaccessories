@@ -88,6 +88,9 @@ function ProductDetail() {
             {/* Right: Info */}
             <div className="flex flex-col gap-5">
               <div>
+                {product.brand && (
+                  <p className="text-muted-foreground font-heading uppercase text-[0.65rem] tracking-widest mb-0.5">{product.brand}</p>
+                )}
                 <p className="text-primary font-heading uppercase text-xs tracking-widest mb-1">{product.category}</p>
                 <h1 className="font-heading text-2xl md:text-3xl font-bold text-foreground">{product.name}</h1>
               </div>
@@ -95,10 +98,13 @@ function ProductDetail() {
               <div className="flex items-center gap-2">
                 <div className="flex">
                   {Array.from({ length: 5 }, (_, i) => (
-                    <FaStar key={i} className={i < product.rating ? "text-yellow-400" : "text-muted"} />
+                    <FaStar key={i} className={i < Math.round(product.rating) ? "text-yellow-400" : "text-muted"} />
                   ))}
                 </div>
                 <span className="text-muted-foreground text-sm font-body">({product.rating}/5)</span>
+                {product.reviews !== undefined && (
+                  <span className="text-muted-foreground text-sm font-body">· {product.reviews.toLocaleString("en-IN")} reviews</span>
+                )}
               </div>
 
               <div className="flex items-center gap-3">
