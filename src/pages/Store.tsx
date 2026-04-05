@@ -6,7 +6,7 @@ import ProductCard from "@/components/product/ProductCard";
 import Heading from "@/components/ui/Heading";
 import { products } from "@/data/products";
 
-const categories = ["All", "Keyboards", "Mouse", "Headsets", "Graphics Cards", "Processors", "Cabinets"];
+const categories = ["All", "Keyboard", "Mouse", "Cabinet", "Processor", "Graphic"];
 
 function Store() {
   const [searchParams] = useSearchParams();
@@ -48,7 +48,7 @@ function Store() {
                     : "bg-card text-muted-foreground border-border hover:border-primary hover:text-foreground"
                 }`}
               >
-                {cat}
+                {cat === "Graphic" ? "Graphics Cards" : cat === "All" ? "All" : cat + "s"}
               </button>
             ))}
           </div>
