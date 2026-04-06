@@ -38,6 +38,27 @@ const ChoiceBtn = ({ label, selected, onClick, icon }: { label: string; selected
   </button>
 );
 
+const ProcessorCard = ({ proc, selected, onClick }: { proc: ProcessorModel; selected: boolean; onClick: () => void }) => (
+  <div
+    onClick={onClick}
+    className={`bg-secondary/50 border rounded-lg p-3 cursor-pointer transition-all hover:border-primary hover:shadow-[var(--glow-primary-sm)] ${
+      selected ? "border-primary shadow-[var(--glow-primary-sm)]" : "border-border"
+    }`}
+  >
+    <div className="aspect-video rounded-md overflow-hidden mb-2 bg-background">
+      <img src={proc.image} alt={proc.name} className="w-full h-full object-cover" loading="lazy" />
+    </div>
+    <h4 className="font-heading text-xs font-bold text-foreground truncate">{proc.name}</h4>
+    <p className="text-[0.6rem] text-primary font-heading uppercase tracking-wider mt-0.5">{proc.generation}</p>
+    <div className="mt-2 space-y-0.5 text-[0.6rem] text-muted-foreground font-body">
+      <div className="flex justify-between"><span>Cores/Threads</span><span className="text-foreground">{proc.cores}C / {proc.threads}T</span></div>
+      <div className="flex justify-between"><span>Base / Boost</span><span className="text-foreground">{proc.baseClock} / {proc.boostClock}</span></div>
+      <div className="flex justify-between"><span>TDP</span><span className="text-foreground">{proc.tdp}</span></div>
+    </div>
+    <p className="font-heading font-bold text-sm text-primary mt-2">₹{proc.price.toLocaleString("en-IN")}</p>
+  </div>
+);
+
 function BuildPC() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [budget, setBudget] = useState(20000);
