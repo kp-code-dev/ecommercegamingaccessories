@@ -40,6 +40,8 @@ const ChoiceBtn = ({ label, selected, onClick, icon }: { label: string; selected
 function BuildPC() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [budget, setBudget] = useState(20000);
+  const [showAllProcessors, setShowAllProcessors] = useState(false);
+  const [selectedProcessorModel, setSelectedProcessorModel] = useState<ProcessorModel | null>(null);
   const [selections, setSelections] = useState<Selections>({
     purpose:"", platform:"", processor:"", motherboard:"",
     ramSize:"", ramCategory:"", storageType:"", gpu:"",
