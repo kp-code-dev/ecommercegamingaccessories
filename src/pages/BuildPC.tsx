@@ -7,6 +7,7 @@ import { FaHeadphonesAlt, FaGamepad, FaLaptopCode } from "react-icons/fa";
 import { SiIntel, SiAmd, SiYoutubegaming } from "react-icons/si";
 import { BsDeviceHdd, BsDeviceSsd, BsKeyboard, BsMouse3Fill, BsNvidia } from "react-icons/bs";
 import { MdScreenshotMonitor } from "react-icons/md";
+import { IoClose } from "react-icons/io5";
 import { useAuth } from "@/context/AuthContext";
 import { getProcessorsBySeries, type ProcessorModel } from "@/data/processorSeries";
 
