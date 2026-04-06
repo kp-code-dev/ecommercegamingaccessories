@@ -7,6 +7,7 @@ import { FaHeadphonesAlt, FaGamepad, FaLaptopCode } from "react-icons/fa";
 import { SiIntel, SiAmd, SiYoutubegaming } from "react-icons/si";
 import { BsDeviceHdd, BsDeviceSsd, BsKeyboard, BsMouse3Fill, BsNvidia } from "react-icons/bs";
 import { MdScreenshotMonitor } from "react-icons/md";
+import { IoClose } from "react-icons/io5";
 import { useAuth } from "@/context/AuthContext";
 import { getProcessorsBySeries, type ProcessorModel } from "@/data/processorSeries";
 
@@ -37,10 +38,32 @@ const ChoiceBtn = ({ label, selected, onClick, icon }: { label: string; selected
   </button>
 );
 
+const ProcessorCard = ({ proc, selected, onClick }: { proc: ProcessorModel; selected: boolean; onClick: () => void }) => (
+  <div
+    onClick={onClick}
+    className={`bg-secondary/50 border rounded-lg p-3 cursor-pointer transition-all hover:border-primary hover:shadow-[var(--glow-primary-sm)] ${
+      selected ? "border-primary shadow-[var(--glow-primary-sm)]" : "border-border"
+    }`}
+  >
+    <div className="aspect-video rounded-md overflow-hidden mb-2 bg-background">
+      <img src={proc.image} alt={proc.name} className="w-full h-full object-cover" loading="lazy" />
+    </div>
+    <h4 className="font-heading text-xs font-bold text-foreground truncate">{proc.name}</h4>
+    <p className="text-[0.6rem] text-primary font-heading uppercase tracking-wider mt-0.5">{proc.generation}</p>
+    <div className="mt-2 space-y-0.5 text-[0.6rem] text-muted-foreground font-body">
+      <div className="flex justify-between"><span>Cores/Threads</span><span className="text-foreground">{proc.cores}C / {proc.threads}T</span></div>
+      <div className="flex justify-between"><span>Base / Boost</span><span className="text-foreground">{proc.baseClock} / {proc.boostClock}</span></div>
+      <div className="flex justify-between"><span>TDP</span><span className="text-foreground">{proc.tdp}</span></div>
+    </div>
+    <p className="font-heading font-bold text-sm text-primary mt-2">₹{proc.price.toLocaleString("en-IN")}</p>
+  </div>
+);
+
 function BuildPC() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [budget, setBudget] = useState(20000);
   const [showAllProcessors, setShowAllProcessors] = useState(false);
+  const [processorModalOpen, setProcessorModalOpen] = useState(false);
   const [selectedProcessorModel, setSelectedProcessorModel] = useState<ProcessorModel | null>(null);
   const [selections, setSelections] = useState<Selections>({
     purpose:"", platform:"", processor:"", motherboard:"",
@@ -141,10 +164,9 @@ function BuildPC() {
                         ).map(p => <ChoiceBtn key={p} label={p} selected={selections.processor === p} onClick={() => handleSelect("processor", p)} />)}
                       </div>
 
-                      {/* Processor Models Grid */}
                       {selections.processor && (() => {
                         const allModels = getProcessorsBySeries(selections.processor);
-                        const displayModels = showAllProcessors ? allModels : allModels.slice(0, 3);
+                        const displayModels = allModels.slice(0, 3);
                         const generations = [...new Set(allModels.map(p => p.generation))];
 
                         return (
@@ -155,15 +177,14 @@ function BuildPC() {
                               </p>
                               {allModels.length > 3 && (
                                 <button
-                                  onClick={() => setShowAllProcessors(!showAllProcessors)}
+                                  onClick={() => setProcessorModalOpen(true)}
                                   className="text-primary font-heading text-[0.65rem] uppercase tracking-wider hover:underline cursor-pointer transition-colors"
                                 >
-                                  {showAllProcessors ? "Show Less" : `View More (${allModels.length})`}
+                                  View More ({allModels.length})
                                 </button>
                               )}
                             </div>
 
-                            {/* Generation filter tags */}
                             <div className="flex flex-wrap gap-2 mb-3">
                               {generations.map(gen => (
                                 <span key={gen} className="text-[0.6rem] font-heading uppercase tracking-wider px-2 py-1 rounded bg-secondary text-muted-foreground border border-border">
@@ -174,32 +195,12 @@ function BuildPC() {
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                               {displayModels.map(proc => (
-                                <div
+                                <ProcessorCard
                                   key={proc.id}
+                                  proc={proc}
+                                  selected={selectedProcessorModel?.id === proc.id}
                                   onClick={() => setSelectedProcessorModel(proc)}
-                                  className={`bg-secondary/50 border rounded-lg p-3 cursor-pointer transition-all hover:border-primary hover:shadow-[var(--glow-primary-sm)] ${
-                                    selectedProcessorModel?.id === proc.id
-                                      ? "border-primary shadow-[var(--glow-primary-sm)]"
-                                      : "border-border"
-                                  }`}
-                                >
-                                  <div className="aspect-video rounded-md overflow-hidden mb-2 bg-background">
-                                    <img
-                                      src={proc.image}
-                                      alt={proc.name}
-                                      className="w-full h-full object-cover"
-                                      loading="lazy"
-                                    />
-                                  </div>
-                                  <h4 className="font-heading text-xs font-bold text-foreground truncate">{proc.name}</h4>
-                                  <p className="text-[0.6rem] text-primary font-heading uppercase tracking-wider mt-0.5">{proc.generation}</p>
-                                  <div className="mt-2 space-y-0.5 text-[0.6rem] text-muted-foreground font-body">
-                                    <div className="flex justify-between"><span>Cores/Threads</span><span className="text-foreground">{proc.cores}C / {proc.threads}T</span></div>
-                                    <div className="flex justify-between"><span>Base / Boost</span><span className="text-foreground">{proc.baseClock} / {proc.boostClock}</span></div>
-                                    <div className="flex justify-between"><span>TDP</span><span className="text-foreground">{proc.tdp}</span></div>
-                                  </div>
-                                  <p className="font-heading font-bold text-sm text-primary mt-2">₹{proc.price.toLocaleString("en-IN")}</p>
-                                </div>
+                                />
                               ))}
                             </div>
                           </div>
@@ -382,6 +383,57 @@ function BuildPC() {
           </div>
         </div>
       </main>
+
+      {/* Processor Modal */}
+      {processorModalOpen && selections.processor && (() => {
+        const allModels = getProcessorsBySeries(selections.processor);
+        const grouped = allModels.reduce<Record<string, ProcessorModel[]>>((acc, p) => {
+          (acc[p.generation] = acc[p.generation] || []).push(p);
+          return acc;
+        }, {});
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setProcessorModalOpen(false)}>
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
+            <div
+              className="relative bg-card border border-border rounded-xl w-full max-w-3xl max-h-[80vh] overflow-y-auto p-6 shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-5 sticky top-0 bg-card pb-3 border-b border-border z-10">
+                <h2 className="font-heading text-base font-bold text-foreground uppercase tracking-wider">
+                  All {selections.processor} Processors
+                </h2>
+                <button
+                  onClick={() => setProcessorModalOpen(false)}
+                  className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                >
+                  <IoClose size={20} />
+                </button>
+              </div>
+
+              {Object.entries(grouped).map(([gen, procs]) => (
+                <div key={gen} className="mb-6 last:mb-0">
+                  <p className="text-primary font-heading text-xs uppercase tracking-widest mb-3">{gen}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {procs.map(proc => (
+                      <ProcessorCard
+                        key={proc.id}
+                        proc={proc}
+                        selected={selectedProcessorModel?.id === proc.id}
+                        onClick={() => {
+                          setSelectedProcessorModel(proc);
+                          setProcessorModalOpen(false);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       <Footer />
     </>
   );
