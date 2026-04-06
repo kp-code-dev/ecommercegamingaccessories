@@ -8,6 +8,7 @@ import { SiIntel, SiAmd, SiYoutubegaming } from "react-icons/si";
 import { BsDeviceHdd, BsDeviceSsd, BsKeyboard, BsMouse3Fill, BsNvidia } from "react-icons/bs";
 import { MdScreenshotMonitor } from "react-icons/md";
 import { useAuth } from "@/context/AuthContext";
+import { getProcessorsBySeries, type ProcessorModel } from "@/data/processorSeries";
 
 type Selections = {
   purpose: string; platform: string; processor: string; motherboard: string;
