@@ -383,6 +383,57 @@ function BuildPC() {
           </div>
         </div>
       </main>
+
+      {/* Processor Modal */}
+      {processorModalOpen && selections.processor && (() => {
+        const allModels = getProcessorsBySeries(selections.processor);
+        const grouped = allModels.reduce<Record<string, ProcessorModel[]>>((acc, p) => {
+          (acc[p.generation] = acc[p.generation] || []).push(p);
+          return acc;
+        }, {});
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setProcessorModalOpen(false)}>
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
+            <div
+              className="relative bg-card border border-border rounded-xl w-full max-w-3xl max-h-[80vh] overflow-y-auto p-6 shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-5 sticky top-0 bg-card pb-3 border-b border-border z-10">
+                <h2 className="font-heading text-base font-bold text-foreground uppercase tracking-wider">
+                  All {selections.processor} Processors
+                </h2>
+                <button
+                  onClick={() => setProcessorModalOpen(false)}
+                  className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                >
+                  <IoClose size={20} />
+                </button>
+              </div>
+
+              {Object.entries(grouped).map(([gen, procs]) => (
+                <div key={gen} className="mb-6 last:mb-0">
+                  <p className="text-primary font-heading text-xs uppercase tracking-widest mb-3">{gen}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {procs.map(proc => (
+                      <ProcessorCard
+                        key={proc.id}
+                        proc={proc}
+                        selected={selectedProcessorModel?.id === proc.id}
+                        onClick={() => {
+                          setSelectedProcessorModel(proc);
+                          setProcessorModalOpen(false);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       <Footer />
     </>
   );
