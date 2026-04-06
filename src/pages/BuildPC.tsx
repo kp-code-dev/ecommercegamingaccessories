@@ -59,6 +59,10 @@ function BuildPC() {
       if (prev[category] !== value) {
         const idx = categoryOrder.indexOf(category);
         for (let i = idx + 1; i < categoryOrder.length; i++) next[categoryOrder[i]] = "";
+        if (category === "processor" || categoryOrder.indexOf(category) < categoryOrder.indexOf("processor")) {
+          setShowAllProcessors(false);
+          setSelectedProcessorModel(null);
+        }
       }
       return next;
     });
