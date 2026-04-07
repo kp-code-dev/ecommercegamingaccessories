@@ -10,6 +10,11 @@ import { MdScreenshotMonitor } from "react-icons/md";
 import { IoClose } from "react-icons/io5";
 import { useAuth } from "@/context/AuthContext";
 import { getProcessorsBySeries, type ProcessorModel } from "@/data/processorSeries";
+import {
+  motherboardModels, ramModels, storageModels, gpuModels,
+  coolerModels, psuModels, cabinetModels,
+  getComponentsBySeries, type ComponentModel,
+} from "@/data/componentSeries";
 
 type Selections = {
   purpose: string; platform: string; processor: string; motherboard: string;
@@ -59,12 +64,107 @@ const ProcessorCard = ({ proc, selected, onClick }: { proc: ProcessorModel; sele
   </div>
 );
 
+const ComponentCard = ({ comp, selected, onClick }: { comp: ComponentModel; selected: boolean; onClick: () => void }) => (
+  <div
+    onClick={onClick}
+    className={`bg-secondary/50 border rounded-lg p-3 cursor-pointer transition-all hover:border-primary hover:shadow-[var(--glow-primary-sm)] ${
+      selected ? "border-primary shadow-[var(--glow-primary-sm)]" : "border-border"
+    }`}
+  >
+    <div className="aspect-video rounded-md overflow-hidden mb-2 bg-background">
+      <img src={comp.image} alt={comp.name} className="w-full h-full object-cover" loading="lazy" />
+    </div>
+    <h4 className="font-heading text-xs font-bold text-foreground truncate">{comp.name}</h4>
+    <p className="text-[0.6rem] text-primary font-heading uppercase tracking-wider mt-0.5">{comp.generation}</p>
+    <div className="mt-2 space-y-0.5 text-[0.6rem] text-muted-foreground font-body">
+      {Object.entries(comp.specs).map(([key, val]) => (
+        <div key={key} className="flex justify-between"><span>{key}</span><span className="text-foreground">{val}</span></div>
+      ))}
+    </div>
+    <p className="font-heading font-bold text-sm text-primary mt-2">₹{comp.price.toLocaleString("en-IN")}</p>
+  </div>
+);
+
+type ModalState = {
+  open: boolean;
+  title: string;
+  models: ComponentModel[];
+  selectedId: string | null;
+  onSelect: (comp: ComponentModel) => void;
+};
+
+function ComponentSection({
+  label,
+  models,
+  selectedModel,
+  onSelect,
+  onOpenModal,
+}: {
+  label: string;
+  models: ComponentModel[];
+  selectedModel: ComponentModel | null;
+  onSelect: (comp: ComponentModel) => void;
+  onOpenModal: (title: string, models: ComponentModel[], selectedId: string | null, onSelect: (c: ComponentModel) => void) => void;
+}) {
+  const displayModels = models.slice(0, 3);
+  const generations = [...new Set(models.map(m => m.generation))];
+
+  return (
+    <div className="mt-4">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-muted-foreground font-heading text-[0.65rem] uppercase tracking-wider">
+          {label}
+        </p>
+        {models.length > 3 && (
+          <button
+            onClick={() => onOpenModal(label, models, selectedModel?.id ?? null, onSelect)}
+            className="text-primary font-heading text-[0.65rem] uppercase tracking-wider hover:underline cursor-pointer transition-colors"
+          >
+            View More ({models.length})
+          </button>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-2 mb-3">
+        {generations.map(gen => (
+          <span key={gen} className="text-[0.6rem] font-heading uppercase tracking-wider px-2 py-1 rounded bg-secondary text-muted-foreground border border-border">
+            {gen}
+          </span>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {displayModels.map(comp => (
+          <ComponentCard
+            key={comp.id}
+            comp={comp}
+            selected={selectedModel?.id === comp.id}
+            onClick={() => onSelect(comp)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function BuildPC() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [budget, setBudget] = useState(20000);
-  const [showAllProcessors, setShowAllProcessors] = useState(false);
   const [processorModalOpen, setProcessorModalOpen] = useState(false);
   const [selectedProcessorModel, setSelectedProcessorModel] = useState<ProcessorModel | null>(null);
+
+  // Component selections
+  const [selectedMotherboard, setSelectedMotherboard] = useState<ComponentModel | null>(null);
+  const [selectedRam, setSelectedRam] = useState<ComponentModel | null>(null);
+  const [selectedStorage, setSelectedStorage] = useState<ComponentModel | null>(null);
+  const [selectedGpu, setSelectedGpu] = useState<ComponentModel | null>(null);
+  const [selectedCooler, setSelectedCooler] = useState<ComponentModel | null>(null);
+  const [selectedPsu, setSelectedPsu] = useState<ComponentModel | null>(null);
+  const [selectedCabinet, setSelectedCabinet] = useState<ComponentModel | null>(null);
+
+  // Generic modal
+  const [componentModal, setComponentModal] = useState<ModalState>({
+    open: false, title: "", models: [], selectedId: null, onSelect: () => {},
+  });
+
   const [selections, setSelections] = useState<Selections>({
     purpose:"", platform:"", processor:"", motherboard:"",
     ramSize:"", ramCategory:"", storageType:"", gpu:"",
@@ -82,17 +182,37 @@ function BuildPC() {
       if (prev[category] !== value) {
         const idx = categoryOrder.indexOf(category);
         for (let i = idx + 1; i < categoryOrder.length; i++) next[categoryOrder[i]] = "";
-        if (category === "processor" || categoryOrder.indexOf(category) < categoryOrder.indexOf("processor")) {
-          setShowAllProcessors(false);
-          setSelectedProcessorModel(null);
-        }
+        // Reset downstream component selections
+        const resetMap: Record<string, () => void> = {
+          processor: () => { setSelectedProcessorModel(null); setSelectedMotherboard(null); setSelectedRam(null); setSelectedStorage(null); setSelectedGpu(null); setSelectedCooler(null); setSelectedPsu(null); setSelectedCabinet(null); },
+          motherboard: () => { setSelectedMotherboard(null); setSelectedRam(null); setSelectedStorage(null); setSelectedGpu(null); setSelectedCooler(null); setSelectedPsu(null); setSelectedCabinet(null); },
+          ramCategory: () => { setSelectedRam(null); setSelectedStorage(null); setSelectedGpu(null); setSelectedCooler(null); setSelectedPsu(null); setSelectedCabinet(null); },
+          storageType: () => { setSelectedStorage(null); setSelectedGpu(null); setSelectedCooler(null); setSelectedPsu(null); setSelectedCabinet(null); },
+          gpu: () => { setSelectedGpu(null); setSelectedCooler(null); setSelectedPsu(null); setSelectedCabinet(null); },
+          cooler: () => { setSelectedCooler(null); setSelectedPsu(null); setSelectedCabinet(null); },
+          psu: () => { setSelectedPsu(null); setSelectedCabinet(null); },
+          cabinet: () => { setSelectedCabinet(null); },
+        };
+        if (resetMap[category]) resetMap[category]();
       }
       return next;
     });
   };
 
+  const openComponentModal = (title: string, models: ComponentModel[], selectedId: string | null, onSelect: (c: ComponentModel) => void) => {
+    setComponentModal({ open: true, title, models, selectedId, onSelect });
+  };
+
+  // Calculate total
+  const totalPrice = [selectedProcessorModel?.price, selectedMotherboard?.price, selectedRam?.price, selectedStorage?.price, selectedGpu?.price, selectedCooler?.price, selectedPsu?.price, selectedCabinet?.price]
+    .filter(Boolean)
+    .reduce((sum, p) => sum + (p || 0), 0);
+
   const sectionLabel = "text-primary font-heading text-xs uppercase tracking-widest mt-6 mb-3";
   const subLabel = "text-muted-foreground font-heading text-[0.65rem] uppercase tracking-wider mt-4 mb-2 flex items-center gap-2";
+
+  // Helpers for RAM series key
+  const ramSeriesKey = selections.ramCategory && selections.ramSize ? `${selections.ramCategory}-${selections.ramSize}` : "";
 
   if (!activeTab) {
     return (
@@ -128,7 +248,6 @@ function BuildPC() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Left: Builder */}
             <div className="lg:col-span-3">
-              {/* Tabs */}
               <div className="flex gap-2 mb-6">
                 <button onClick={() => handleSelectTab("custom")} className={`px-5 py-2.5 rounded-md font-heading text-xs uppercase tracking-wider border transition-all cursor-pointer ${activeTab === "custom" ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground border-border hover:border-primary"}`}>
                   Custom PC
@@ -141,12 +260,14 @@ function BuildPC() {
               <div className="bg-card border border-border rounded-lg p-6">
                 {activeTab === "custom" && (
                   <div>
+                    {/* PURPOSE */}
                     <p className={sectionLabel}>Select Purpose</p>
                     <div className="flex flex-wrap gap-3">
                       <ChoiceBtn label="Gaming" selected={selections.purpose === "Gaming"} onClick={() => handleSelect("purpose", "Gaming")} icon={<SiYoutubegaming />} />
                       <ChoiceBtn label="Productivity (Coding & Editing)" selected={selections.purpose === "Productivity"} onClick={() => handleSelect("purpose", "Productivity")} icon={<FaLaptopCode />} />
                     </div>
 
+                    {/* PLATFORM */}
                     {selections.purpose && (<>
                       <p className={sectionLabel}>Choose Your Platform</p>
                       <div className="flex flex-wrap gap-3">
@@ -155,6 +276,7 @@ function BuildPC() {
                       </div>
                     </>)}
 
+                    {/* PROCESSOR SERIES + MODELS */}
                     {selections.platform && (<>
                       <p className={sectionLabel}>Select Processor Series</p>
                       <div className="flex flex-wrap gap-3">
@@ -168,39 +290,26 @@ function BuildPC() {
                         const allModels = getProcessorsBySeries(selections.processor);
                         const displayModels = allModels.slice(0, 3);
                         const generations = [...new Set(allModels.map(p => p.generation))];
-
                         return (
                           <div className="mt-4">
                             <div className="flex items-center justify-between mb-3">
-                              <p className="text-muted-foreground font-heading text-[0.65rem] uppercase tracking-wider flex items-center gap-2">
+                              <p className="text-muted-foreground font-heading text-[0.65rem] uppercase tracking-wider">
                                 Latest {selections.processor} Processors
                               </p>
                               {allModels.length > 3 && (
-                                <button
-                                  onClick={() => setProcessorModalOpen(true)}
-                                  className="text-primary font-heading text-[0.65rem] uppercase tracking-wider hover:underline cursor-pointer transition-colors"
-                                >
+                                <button onClick={() => setProcessorModalOpen(true)} className="text-primary font-heading text-[0.65rem] uppercase tracking-wider hover:underline cursor-pointer transition-colors">
                                   View More ({allModels.length})
                                 </button>
                               )}
                             </div>
-
                             <div className="flex flex-wrap gap-2 mb-3">
                               {generations.map(gen => (
-                                <span key={gen} className="text-[0.6rem] font-heading uppercase tracking-wider px-2 py-1 rounded bg-secondary text-muted-foreground border border-border">
-                                  {gen}
-                                </span>
+                                <span key={gen} className="text-[0.6rem] font-heading uppercase tracking-wider px-2 py-1 rounded bg-secondary text-muted-foreground border border-border">{gen}</span>
                               ))}
                             </div>
-
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                               {displayModels.map(proc => (
-                                <ProcessorCard
-                                  key={proc.id}
-                                  proc={proc}
-                                  selected={selectedProcessorModel?.id === proc.id}
-                                  onClick={() => setSelectedProcessorModel(proc)}
-                                />
+                                <ProcessorCard key={proc.id} proc={proc} selected={selectedProcessorModel?.id === proc.id} onClick={() => setSelectedProcessorModel(proc)} />
                               ))}
                             </div>
                           </div>
@@ -208,18 +317,24 @@ function BuildPC() {
                       })()}
                     </>)}
 
+                    {/* MOTHERBOARD */}
                     {selectedProcessorModel && (<>
                       <p className={sectionLabel}>Select Motherboard</p>
-                      <div className="flex flex-wrap gap-3">
-                        <ChoiceBtn label={selections.platform} selected={selections.motherboard === selections.platform} onClick={() => handleSelect("motherboard", selections.platform)} />
-                      </div>
+                      <ComponentSection
+                        label={`${selections.platform} Motherboards`}
+                        models={getComponentsBySeries(motherboardModels, selections.platform)}
+                        selectedModel={selectedMotherboard}
+                        onSelect={(c) => { setSelectedMotherboard(c); handleSelect("motherboard", c.name); }}
+                        onOpenModal={openComponentModal}
+                      />
                     </>)}
 
-                    {selections.motherboard && (<>
+                    {/* RAM */}
+                    {selectedMotherboard && (<>
                       <p className={sectionLabel}>Choose Your RAM</p>
                       <p className={subLabel}>Select Size:</p>
                       <div className="flex flex-wrap gap-3">
-                        {["8GB","16GB","32GB","64GB","64GB+"].map(s => <ChoiceBtn key={s} label={s} selected={selections.ramSize === s} onClick={() => handleSelect("ramSize", s)} />)}
+                        {["8GB","16GB","32GB","64GB"].map(s => <ChoiceBtn key={s} label={s} selected={selections.ramSize === s} onClick={() => handleSelect("ramSize", s)} />)}
                       </div>
                       {selections.ramSize && (<>
                         <p className={subLabel}>Select Category:</p>
@@ -227,66 +342,126 @@ function BuildPC() {
                           {["DDR4","DDR5"].map(c => <ChoiceBtn key={c} label={c} selected={selections.ramCategory === c} onClick={() => handleSelect("ramCategory", c)} />)}
                         </div>
                       </>)}
+                      {ramSeriesKey && (() => {
+                        const ramList = getComponentsBySeries(ramModels, ramSeriesKey);
+                        return ramList.length > 0 ? (
+                          <ComponentSection
+                            label={`${selections.ramCategory} ${selections.ramSize} RAM`}
+                            models={ramList}
+                            selectedModel={selectedRam}
+                            onSelect={(c) => { setSelectedRam(c); }}
+                            onOpenModal={openComponentModal}
+                          />
+                        ) : null;
+                      })()}
                     </>)}
 
-                    {selections.ramCategory && (<>
+                    {/* STORAGE */}
+                    {(selectedRam || (ramSeriesKey && getComponentsBySeries(ramModels, ramSeriesKey).length === 0 && selections.ramCategory)) && (<>
                       <p className={sectionLabel}>Choose Storage</p>
                       <div className="flex flex-wrap gap-3">
                         <ChoiceBtn label="SSD" selected={selections.storageType === "SSD"} onClick={() => handleSelect("storageType", "SSD")} icon={<BsDeviceSsd />} />
                         <ChoiceBtn label="HDD" selected={selections.storageType === "HDD"} onClick={() => handleSelect("storageType", "HDD")} icon={<BsDeviceHdd />} />
                       </div>
+                      {selections.storageType && (
+                        <ComponentSection
+                          label={`${selections.storageType} Storage`}
+                          models={getComponentsBySeries(storageModels, selections.storageType)}
+                          selectedModel={selectedStorage}
+                          onSelect={(c) => { setSelectedStorage(c); }}
+                          onOpenModal={openComponentModal}
+                        />
+                      )}
                     </>)}
 
-                    {selections.storageType && (<>
+                    {/* GRAPHICS CARD */}
+                    {selectedStorage && (<>
                       <p className={sectionLabel}>Select Graphics Card (GPU)</p>
                       <div className="flex flex-wrap gap-3">
                         <ChoiceBtn label="NVIDIA" selected={selections.gpu === "NVIDIA"} onClick={() => handleSelect("gpu", "NVIDIA")} icon={<BsNvidia />} />
                         <ChoiceBtn label="AMD" selected={selections.gpu === "AMD"} onClick={() => handleSelect("gpu", "AMD")} icon={<SiAmd />} />
                       </div>
+                      {selections.gpu && (
+                        <ComponentSection
+                          label={`${selections.gpu} Graphics Cards`}
+                          models={getComponentsBySeries(gpuModels, selections.gpu)}
+                          selectedModel={selectedGpu}
+                          onSelect={(c) => { setSelectedGpu(c); }}
+                          onOpenModal={openComponentModal}
+                        />
+                      )}
                     </>)}
 
-                    {selections.gpu && (<>
+                    {/* CPU COOLER */}
+                    {selectedGpu && (<>
                       <p className={sectionLabel}>Select CPU Cooler</p>
                       <div className="flex flex-wrap gap-3">
                         {["Air Cooler","Liquid Cooler"].map(c => <ChoiceBtn key={c} label={c} selected={selections.cooler === c} onClick={() => handleSelect("cooler", c)} />)}
                       </div>
+                      {selections.cooler && (
+                        <ComponentSection
+                          label={`${selections.cooler}s`}
+                          models={getComponentsBySeries(coolerModels, selections.cooler)}
+                          selectedModel={selectedCooler}
+                          onSelect={(c) => { setSelectedCooler(c); }}
+                          onOpenModal={openComponentModal}
+                        />
+                      )}
                     </>)}
 
-                    {selections.cooler && (<>
+                    {/* POWER SUPPLY */}
+                    {selectedCooler && (<>
                       <p className={sectionLabel}>Select Power Supply (PSU)</p>
                       <div className="flex flex-wrap gap-3">
                         {["550W","650W","750W","850W","1000W"].map(p => <ChoiceBtn key={p} label={p} selected={selections.psu === p} onClick={() => handleSelect("psu", p)} />)}
                       </div>
+                      {selections.psu && (
+                        <ComponentSection
+                          label={`${selections.psu} Power Supplies`}
+                          models={getComponentsBySeries(psuModels, selections.psu)}
+                          selectedModel={selectedPsu}
+                          onSelect={(c) => { setSelectedPsu(c); }}
+                          onOpenModal={openComponentModal}
+                        />
+                      )}
                     </>)}
 
-                    {selections.psu && (<>
+                    {/* CABINET */}
+                    {selectedPsu && (<>
                       <p className={sectionLabel}>Select Cabinet (PC Case)</p>
                       <div className="flex flex-wrap gap-3">
                         {["ATX","Micro ATX","Mini ITX"].map(c => <ChoiceBtn key={c} label={c} selected={selections.cabinet === c} onClick={() => handleSelect("cabinet", c)} />)}
                       </div>
+                      {selections.cabinet && (
+                        <ComponentSection
+                          label={`${selections.cabinet} Cabinets`}
+                          models={getComponentsBySeries(cabinetModels, selections.cabinet)}
+                          selectedModel={selectedCabinet}
+                          onSelect={(c) => { setSelectedCabinet(c); }}
+                          onOpenModal={openComponentModal}
+                        />
+                      )}
                     </>)}
 
-                    {selections.cabinet && (<>
+                    {/* PERIPHERALS */}
+                    {selectedCabinet && (<>
                       <p className={sectionLabel}>Select Peripherals</p>
                       <p className={subLabel}><MdScreenshotMonitor size={16} /> Monitor</p>
                       <div className="flex flex-wrap gap-3">
                         {["24 inch","27 inch","32 inch"].map(m => <ChoiceBtn key={m} label={m} selected={selections.monitor === m} onClick={() => handleSelect("monitor", m)} />)}
                       </div>
-
                       {selections.monitor && (<>
                         <p className={subLabel}><BsKeyboard size={16} /> Keyboard</p>
                         <div className="flex flex-wrap gap-3">
                           {["Mechanical","Membrane"].map(k => <ChoiceBtn key={k} label={k} selected={selections.keyboard === k} onClick={() => handleSelect("keyboard", k)} />)}
                         </div>
                       </>)}
-
                       {selections.keyboard && (<>
                         <p className={subLabel}><BsMouse3Fill size={16} /> Mouse</p>
                         <div className="flex flex-wrap gap-3">
                           {["Gaming","Office"].map(m => <ChoiceBtn key={m} label={m} selected={selections.mouse === m} onClick={() => handleSelect("mouse", m)} />)}
                         </div>
                       </>)}
-
                       {selections.mouse && (<>
                         <p className={subLabel}><FaHeadphonesAlt size={16} /> Headset</p>
                         <div className="flex flex-wrap gap-3">
@@ -295,6 +470,7 @@ function BuildPC() {
                       </>)}
                     </>)}
 
+                    {/* FINAL REVEAL */}
                     {selections.headset && (
                       <div className="mt-8">
                         <div className="bg-secondary/50 border border-primary/30 rounded-lg p-6">
@@ -330,11 +506,7 @@ function BuildPC() {
                     <p className="text-muted-foreground font-body mb-4">Set The Gaming PC Budget:</p>
                     <div className="flex items-center gap-4 justify-center mb-4">
                       <span className="text-muted-foreground font-heading text-xs">₹20K</span>
-                      <input
-                        type="range" min="20000" max="200000" step="5000"
-                        value={budget} onChange={e => setBudget(Number(e.target.value))}
-                        className="w-64 accent-primary"
-                      />
+                      <input type="range" min="20000" max="200000" step="5000" value={budget} onChange={e => setBudget(Number(e.target.value))} className="w-64 accent-primary" />
                       <span className="text-muted-foreground font-heading text-xs">₹2L+</span>
                     </div>
                     <p className="text-foreground font-heading text-xl font-bold mb-4">₹{budget.toLocaleString("en-IN")}</p>
@@ -355,13 +527,57 @@ function BuildPC() {
                     <span>Selected Type</span>
                     <span className="text-foreground">{activeTab === "custom" ? "Custom Parts" : "Pre-built Base"}</span>
                   </div>
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Subtotal</span>
-                    <span className="text-foreground">₹0</span>
-                  </div>
+                  {selectedProcessorModel && (
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Processor</span>
+                      <span className="text-foreground">₹{selectedProcessorModel.price.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
+                  {selectedMotherboard && (
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Motherboard</span>
+                      <span className="text-foreground">₹{selectedMotherboard.price.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
+                  {selectedRam && (
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>RAM</span>
+                      <span className="text-foreground">₹{selectedRam.price.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
+                  {selectedStorage && (
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Storage</span>
+                      <span className="text-foreground">₹{selectedStorage.price.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
+                  {selectedGpu && (
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>GPU</span>
+                      <span className="text-foreground">₹{selectedGpu.price.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
+                  {selectedCooler && (
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>CPU Cooler</span>
+                      <span className="text-foreground">₹{selectedCooler.price.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
+                  {selectedPsu && (
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>PSU</span>
+                      <span className="text-foreground">₹{selectedPsu.price.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
+                  {selectedCabinet && (
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Cabinet</span>
+                      <span className="text-foreground">₹{selectedCabinet.price.toLocaleString("en-IN")}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-muted-foreground">
                     <span>GST (18% Included)</span>
-                    <span className="text-foreground">₹0</span>
+                    <span className="text-foreground">₹{Math.round(totalPrice * 0.18 / 1.18).toLocaleString("en-IN")}</span>
                   </div>
                   <div className="flex justify-between text-muted-foreground">
                     <span>Shipping</span>
@@ -369,12 +585,16 @@ function BuildPC() {
                   </div>
                   <div className="flex justify-between font-heading font-bold text-foreground pt-2 border-t border-border">
                     <span>Grand Total</span>
-                    <span className="text-primary">₹0</span>
+                    <span className="text-primary">₹{totalPrice.toLocaleString("en-IN")}</span>
                   </div>
                 </div>
                 <button
-                  disabled
-                  className="w-full mt-4 py-3 bg-muted text-muted-foreground rounded-md font-heading font-bold text-xs uppercase border-none cursor-not-allowed"
+                  disabled={totalPrice === 0}
+                  className={`w-full mt-4 py-3 rounded-md font-heading font-bold text-xs uppercase border-none ${
+                    totalPrice > 0
+                      ? "bg-primary text-primary-foreground cursor-pointer hover:shadow-[var(--glow-primary)] transition-all"
+                      : "bg-muted text-muted-foreground cursor-not-allowed"
+                  }`}
                 >
                   Proceed to Checkout
                 </button>
@@ -391,38 +611,59 @@ function BuildPC() {
           (acc[p.generation] = acc[p.generation] || []).push(p);
           return acc;
         }, {});
-
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setProcessorModalOpen(false)}>
             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
-            <div
-              className="relative bg-card border border-border rounded-xl w-full max-w-3xl max-h-[80vh] overflow-y-auto p-6 shadow-2xl"
-              onClick={e => e.stopPropagation()}
-            >
+            <div className="relative bg-card border border-border rounded-xl w-full max-w-3xl max-h-[80vh] overflow-y-auto p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-5 sticky top-0 bg-card pb-3 border-b border-border z-10">
-                <h2 className="font-heading text-base font-bold text-foreground uppercase tracking-wider">
-                  All {selections.processor} Processors
-                </h2>
-                <button
-                  onClick={() => setProcessorModalOpen(false)}
-                  className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                >
+                <h2 className="font-heading text-base font-bold text-foreground uppercase tracking-wider">All {selections.processor} Processors</h2>
+                <button onClick={() => setProcessorModalOpen(false)} className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
                   <IoClose size={20} />
                 </button>
               </div>
-
               {Object.entries(grouped).map(([gen, procs]) => (
                 <div key={gen} className="mb-6 last:mb-0">
                   <p className="text-primary font-heading text-xs uppercase tracking-widest mb-3">{gen}</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {procs.map(proc => (
-                      <ProcessorCard
-                        key={proc.id}
-                        proc={proc}
-                        selected={selectedProcessorModel?.id === proc.id}
+                      <ProcessorCard key={proc.id} proc={proc} selected={selectedProcessorModel?.id === proc.id} onClick={() => { setSelectedProcessorModel(proc); setProcessorModalOpen(false); }} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Generic Component Modal */}
+      {componentModal.open && (() => {
+        const grouped = componentModal.models.reduce<Record<string, ComponentModel[]>>((acc, m) => {
+          (acc[m.generation] = acc[m.generation] || []).push(m);
+          return acc;
+        }, {});
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setComponentModal(prev => ({ ...prev, open: false }))}>
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
+            <div className="relative bg-card border border-border rounded-xl w-full max-w-3xl max-h-[80vh] overflow-y-auto p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-5 sticky top-0 bg-card pb-3 border-b border-border z-10">
+                <h2 className="font-heading text-base font-bold text-foreground uppercase tracking-wider">{componentModal.title}</h2>
+                <button onClick={() => setComponentModal(prev => ({ ...prev, open: false }))} className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                  <IoClose size={20} />
+                </button>
+              </div>
+              {Object.entries(grouped).map(([gen, comps]) => (
+                <div key={gen} className="mb-6 last:mb-0">
+                  <p className="text-primary font-heading text-xs uppercase tracking-widest mb-3">{gen}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {comps.map(comp => (
+                      <ComponentCard
+                        key={comp.id}
+                        comp={comp}
+                        selected={componentModal.selectedId === comp.id}
                         onClick={() => {
-                          setSelectedProcessorModel(proc);
-                          setProcessorModalOpen(false);
+                          componentModal.onSelect(comp);
+                          setComponentModal(prev => ({ ...prev, open: false }));
                         }}
                       />
                     ))}
