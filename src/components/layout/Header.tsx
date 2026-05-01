@@ -10,7 +10,7 @@ import { useAuth } from "@/context/AuthContext";
 import AuthModal from "@/components/auth/AuthModal";
 
 function Header() {
-  const { user, logout, openLoginModal, closeLoginModal, isLoginModalOpen } = useAuth();
+  const { user, isAdmin, logout, openLoginModal, closeLoginModal, isLoginModalOpen } = useAuth();
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
@@ -114,6 +114,9 @@ function Header() {
               <div className="flex flex-col">
                 <Link to="/profile" onClick={() => setProfileOpen(false)} className="px-4 py-2.5 text-secondary-foreground text-sm font-body font-semibold hover:bg-muted hover:text-foreground transition-all border-b border-border no-underline">Profile</Link>
                 <Link to="/my-orders" onClick={() => setProfileOpen(false)} className="px-4 py-2.5 text-secondary-foreground text-sm font-body font-semibold hover:bg-muted hover:text-foreground transition-all border-b border-border no-underline">My Orders</Link>
+                {isAdmin && (
+                  <Link to="/admin" onClick={() => setProfileOpen(false)} className="px-4 py-2.5 text-primary text-sm font-body font-semibold hover:bg-muted transition-all border-b border-border no-underline">Admin Panel</Link>
+                )}
                 <button onClick={() => { setProfileOpen(false); logout(); }} className="px-4 py-2.5 bg-transparent border-none text-destructive font-heading font-bold text-sm text-left flex items-center gap-2 hover:bg-destructive/10 transition-all cursor-pointer">
                   Log Out <IoMdLogOut />
                 </button>

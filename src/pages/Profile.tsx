@@ -16,7 +16,7 @@ function Profile() {
           {user ? (
             <div className="bg-card border border-border rounded-lg p-8 flex flex-col items-center gap-4">
               <BiSolidUserCircle className="text-primary" size={80} />
-              <h2 className="font-heading text-xl text-foreground">{user.name}</h2>
+              <h2 className="font-heading text-xl text-foreground">{user.user_metadata?.full_name || user.email}</h2>
               <p className="text-muted-foreground font-body">{user.email}</p>
             </div>
           ) : (
