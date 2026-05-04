@@ -23,6 +23,7 @@ import BuildPC from "./pages/BuildPC";
 import MyOrders from "./pages/MyOrders";
 import Profile from "./pages/Profile";
 import AdminLayout from "./pages/admin/AdminLayout";
+import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProducts from "./pages/admin/AdminProducts";
 import AdminOrders from "./pages/admin/AdminOrders";
@@ -59,6 +60,7 @@ const App = () => (
                   <Route path="/build-pc" element={<BuildPC />} />
                   <Route path="/my-orders" element={<MyOrders />} />
                   <Route path="/profile" element={<Profile />} />
+                  <Route path="/admin/login" element={<AdminLogin />} />
                   <Route path="/admin" element={<AdminLayout />}>
                     <Route index element={<AdminDashboard />} />
                     <Route path="products" element={<AdminProducts />} />
