@@ -1,6 +1,7 @@
 import { NavLink, Outlet, Navigate, Link } from "react-router-dom";
-import { LayoutDashboard, Users, Package, ShoppingBag, Tags, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, Users, ShoppingBag, Package, Settings, Tags } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
 
 export default function AdminLayout() {
   const { user, isAdmin, loading } = useAuth();
@@ -8,9 +9,7 @@ export default function AdminLayout() {
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-foreground">Loading...</div>;
   }
-
   if (!user) return <Navigate to="/" replace />;
-
   if (!isAdmin) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center">
@@ -21,38 +20,53 @@ export default function AdminLayout() {
     );
   }
 
-  const items = [
+  const tabs = [
     { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
-    { to: "/admin/products", label: "Products", icon: Package },
-    { to: "/admin/orders", label: "Orders", icon: ShoppingBag },
+    { to: "/admin/orders", label: "Manage Orders", icon: ShoppingBag },
     { to: "/admin/users", label: "Users", icon: Users },
+    { to: "/admin/products", label: "Products & Selling", icon: Package },
     { to: "/admin/categories", label: "Categories", icon: Tags },
   ];
 
   return (
-    <div className="min-h-screen flex bg-background">
-      <aside className="w-64 border-r border-border bg-card/50 backdrop-blur p-4 flex flex-col gap-1 sticky top-0 h-screen">
-        <Link to="/" className="flex items-center gap-2 px-3 py-2 mb-4 text-muted-foreground hover:text-primary text-xs font-heading uppercase">
-          <ArrowLeft size={14} /> Back to Site
-        </Link>
-        <h2 className="font-heading text-lg text-primary uppercase font-bold mb-4 px-3">Admin Panel</h2>
-        {items.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-md font-body text-sm font-semibold transition-colors ${
-                isActive ? "bg-primary text-primary-foreground" : "text-secondary-foreground hover:bg-muted hover:text-foreground"
-              }`
-            }
-          >
-            <item.icon size={16} />
-            {item.label}
-          </NavLink>
-        ))}
-      </aside>
-      <main className="flex-1 p-6 md:p-8 overflow-x-auto">
+    <div className="min-h-screen bg-background">
+      <div className="border-b border-border bg-card/40 backdrop-blur">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-5 flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="font-heading text-2xl md:text-3xl font-bold text-foreground uppercase tracking-wider">
+              Admin <span className="text-primary">Portal</span>
+            </h1>
+            <p className="text-muted-foreground text-xs md:text-sm font-body mt-1">Manage everything from one place</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-card border border-border text-xs font-body">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> System Online
+            </span>
+            <Button variant="outline" size="sm" className="border-primary/40 text-primary hover:bg-primary/10">
+              <Settings size={14} /> Settings
+            </Button>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 md:px-8 pb-3 flex gap-2 overflow-x-auto">
+          {tabs.map((t) => (
+            <NavLink
+              key={t.to}
+              to={t.to}
+              end={t.end}
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-4 py-2 rounded-md font-body text-sm font-semibold uppercase tracking-wide whitespace-nowrap transition-colors ${
+                  isActive
+                    ? "bg-primary text-primary-foreground shadow-[0_0_15px_hsl(var(--primary)/0.5)]"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`
+              }
+            >
+              <t.icon size={14} /> {t.label}
+            </NavLink>
+          ))}
+        </div>
+      </div>
+      <main className="max-w-7xl mx-auto p-4 md:p-8">
         <Outlet />
       </main>
     </div>
