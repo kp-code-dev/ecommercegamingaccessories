@@ -26,7 +26,7 @@ export default function AdminDashboard() {
         supabase.from("orders").select("*", { count: "exact", head: true }),
         supabase.from("profiles").select("*", { count: "exact", head: true }),
         supabase.from("orders").select("total_amount"),
-        supabase.from("products").select("id,name,price,stock_quantity").order("created_at", { ascending: false }).limit: undefined as any,
+        supabase.from("products").select("id,name,price,stock_quantity").order("created_at", { ascending: false }).limit(10),
       ]);
       const revenue = (rev.data ?? []).reduce((s, r: any) => s + Number(r.total_amount || 0), 0);
       setStats({
