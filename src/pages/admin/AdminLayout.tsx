@@ -25,7 +25,7 @@ export default function AdminLayout() {
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-foreground">Loading...</div>;
   }
-  if (!user) return <Navigate to="/" replace />;
+  if (!user) return <Navigate to="/admin/login" replace />;
   if (!isAdmin) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center bg-background">
