@@ -25,10 +25,12 @@ function ProductDetail() {
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const [product, setProduct] = useState(products.find(p => p.id === id) || null);
+  const [activeImage, setActiveImage] = useState<string>(product?.image ?? "");
 
   useEffect(() => {
     const found = products.find(p => p.id === id);
     setProduct(found || null);
+    setActiveImage(found?.image ?? "");
     window.scrollTo(0, 0);
   }, [id]);
 
@@ -64,11 +66,33 @@ function ProductDetail() {
           </button>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Left: Image */}
+            {/* Left: Image Gallery */}
             <div className="flex flex-col gap-4">
               <div className="bg-secondary rounded-lg flex items-center justify-center p-8 min-h-[350px] border border-border">
-                <img src={product.image} alt={product.name} className="max-h-[300px] max-w-full object-contain" />
+                <img src={activeImage || product.image} alt={product.name} className="max-h-[300px] max-w-full object-contain" />
               </div>
+              {(() => {
+                const gallery = [product.image, ...(product.images ?? [])].filter(Boolean);
+                if (gallery.length <= 1) return null;
+                const current = activeImage || product.image;
+                return (
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {gallery.map((img, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setActiveImage(img)}
+                        className={`flex-shrink-0 w-20 h-20 rounded-md border-2 bg-secondary p-2 transition-all ${
+                          current === img ? "border-primary shadow-[var(--glow-primary)]" : "border-border hover:border-primary/50"
+                        }`}
+                        aria-label={`View image ${i + 1}`}
+                      >
+                        <img src={img} alt={`${product.name} ${i + 1}`} className="w-full h-full object-contain" />
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
               <div className="flex gap-2">
                 {product.bestSeller && (
                   <span className="bg-primary text-primary-foreground text-xs font-heading font-bold uppercase px-3 py-1 rounded">Best Seller</span>
