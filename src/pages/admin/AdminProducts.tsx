@@ -17,6 +17,7 @@ const schema = z.object({
   price: z.coerce.number().nonnegative(),
   original_price: z.coerce.number().nonnegative().optional(),
   image_url: z.string().url().or(z.literal("")).optional(),
+  images: z.string().optional(),
   category_id: z.string().uuid().optional().or(z.literal("")),
   stock_quantity: z.coerce.number().int().nonnegative(),
   sku: z.string().max(100).optional(),
