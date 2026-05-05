@@ -25,10 +25,12 @@ function ProductDetail() {
   const navigate = useNavigate();
   const { addToCart } = useCart();
   const [product, setProduct] = useState(products.find(p => p.id === id) || null);
+  const [activeImage, setActiveImage] = useState<string>(product?.image ?? "");
 
   useEffect(() => {
     const found = products.find(p => p.id === id);
     setProduct(found || null);
+    setActiveImage(found?.image ?? "");
     window.scrollTo(0, 0);
   }, [id]);
 
