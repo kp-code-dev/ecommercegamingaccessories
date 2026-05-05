@@ -56,7 +56,7 @@ export default function AdminProducts() {
 
   const openNew = () => {
     setEditing(null);
-    reset({ name: "", description: "", price: 0, original_price: 0, image_url: "", category_id: "", stock_quantity: 0, sku: "", in_stock: true, best_seller: false });
+    reset({ name: "", description: "", price: 0, original_price: 0, image_url: "", images: "", category_id: "", stock_quantity: 0, sku: "", in_stock: true, best_seller: false });
     setOpen(true);
   };
 
@@ -68,6 +68,7 @@ export default function AdminProducts() {
       price: Number(p.price),
       original_price: p.original_price ? Number(p.original_price) : 0,
       image_url: p.image_url ?? "",
+      images: (p.images ?? []).join("\n"),
       category_id: p.category_id ?? "",
       stock_quantity: p.stock_quantity,
       sku: p.sku ?? "",
