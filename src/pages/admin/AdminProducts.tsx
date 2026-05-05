@@ -28,7 +28,7 @@ type FormData = z.infer<typeof schema>;
 
 interface Product {
   id: string; name: string; price: number; original_price: number | null;
-  image_url: string | null; stock_quantity: number; sku: string | null;
+  image_url: string | null; images: string[] | null; stock_quantity: number; sku: string | null;
   category_id: string | null; in_stock: boolean | null; best_seller: boolean | null;
   description: string | null;
 }
