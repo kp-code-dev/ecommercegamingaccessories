@@ -17,6 +17,7 @@ const schema = z.object({
   price: z.coerce.number().nonnegative(),
   original_price: z.coerce.number().nonnegative().optional(),
   image_url: z.string().url().or(z.literal("")).optional(),
+  images: z.string().optional(),
   category_id: z.string().uuid().optional().or(z.literal("")),
   stock_quantity: z.coerce.number().int().nonnegative(),
   sku: z.string().max(100).optional(),
@@ -27,7 +28,7 @@ type FormData = z.infer<typeof schema>;
 
 interface Product {
   id: string; name: string; price: number; original_price: number | null;
-  image_url: string | null; stock_quantity: number; sku: string | null;
+  image_url: string | null; images: string[] | null; stock_quantity: number; sku: string | null;
   category_id: string | null; in_stock: boolean | null; best_seller: boolean | null;
   description: string | null;
 }
@@ -55,7 +56,7 @@ export default function AdminProducts() {
 
   const openNew = () => {
     setEditing(null);
-    reset({ name: "", description: "", price: 0, original_price: 0, image_url: "", category_id: "", stock_quantity: 0, sku: "", in_stock: true, best_seller: false });
+    reset({ name: "", description: "", price: 0, original_price: 0, image_url: "", images: "", category_id: "", stock_quantity: 0, sku: "", in_stock: true, best_seller: false });
     setOpen(true);
   };
 
@@ -67,6 +68,7 @@ export default function AdminProducts() {
       price: Number(p.price),
       original_price: p.original_price ? Number(p.original_price) : 0,
       image_url: p.image_url ?? "",
+      images: (p.images ?? []).join("\n"),
       category_id: p.category_id ?? "",
       stock_quantity: p.stock_quantity,
       sku: p.sku ?? "",
@@ -77,12 +79,17 @@ export default function AdminProducts() {
   };
 
   const onSubmit = async (data: FormData) => {
+    const extraImages = (data.images ?? "")
+      .split(/[\n,]+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
     const payload = {
       name: data.name,
       description: data.description || null,
       price: data.price,
       original_price: data.original_price || null,
       image_url: data.image_url || null,
+      images: extraImages,
       category_id: data.category_id || null,
       stock_quantity: data.stock_quantity,
       sku: data.sku || null,
@@ -148,8 +155,17 @@ export default function AdminProducts() {
                   <Input {...register("sku")} />
                 </div>
                 <div className="col-span-2">
-                  <Label>Image URL</Label>
-                  <Input {...register("image_url")} />
+                  <Label>Main Image URL</Label>
+                  <Input {...register("image_url")} placeholder="https://..." />
+                </div>
+                <div className="col-span-2">
+                  <Label>Additional Image URLs</Label>
+                  <textarea
+                    {...register("images")}
+                    className="w-full min-h-24 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="One URL per line (or comma-separated)"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Add multiple image URLs — one per line.</p>
                 </div>
                 <div className="col-span-2">
                   <Label>Category</Label>
