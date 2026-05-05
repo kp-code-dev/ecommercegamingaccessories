@@ -42,8 +42,8 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BackgroundGrid />
-            <ThemeSwitcher />
             <BrowserRouter>
+              <ThemeSwitcher />
               <div className="relative z-[1]">
                 <Routes>
                   <Route path="/" element={<Index />} />
