@@ -79,12 +79,17 @@ export default function AdminProducts() {
   };
 
   const onSubmit = async (data: FormData) => {
+    const extraImages = (data.images ?? "")
+      .split(/[\n,]+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
     const payload = {
       name: data.name,
       description: data.description || null,
       price: data.price,
       original_price: data.original_price || null,
       image_url: data.image_url || null,
+      images: extraImages,
       category_id: data.category_id || null,
       stock_quantity: data.stock_quantity,
       sku: data.sku || null,
