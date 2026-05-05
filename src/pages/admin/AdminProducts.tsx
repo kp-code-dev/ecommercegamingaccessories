@@ -155,8 +155,17 @@ export default function AdminProducts() {
                   <Input {...register("sku")} />
                 </div>
                 <div className="col-span-2">
-                  <Label>Image URL</Label>
-                  <Input {...register("image_url")} />
+                  <Label>Main Image URL</Label>
+                  <Input {...register("image_url")} placeholder="https://..." />
+                </div>
+                <div className="col-span-2">
+                  <Label>Additional Image URLs</Label>
+                  <textarea
+                    {...register("images")}
+                    className="w-full min-h-24 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="One URL per line (or comma-separated)"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Add multiple image URLs — one per line.</p>
                 </div>
                 <div className="col-span-2">
                   <Label>Category</Label>
