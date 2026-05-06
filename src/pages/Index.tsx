@@ -6,12 +6,13 @@ import Footer from "@/components/layout/Footer";
 import ProductCard from "@/components/product/ProductCard";
 import MarqueeContainer from "@/components/ui/MarqueeContainer";
 import Heading from "@/components/ui/Heading";
-import { products } from "@/data/products";
+import { useProducts } from "@/hooks/useProducts";
 
 function Index() {
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [startIndex, setStartIndex] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(3);
+  const { products } = useProducts();
 
   const bestProducts = products.filter(p => p.bestSeller).slice(0, 5);
 
