@@ -52,7 +52,7 @@ function Store() {
                     : "bg-card text-muted-foreground border-border hover:border-primary hover:text-foreground"
                 }`}
               >
-                {cat === "Graphic" ? "Graphics Cards" : cat === "All" ? "All" : cat + "s"}
+                {cat}
               </button>
             ))}
           </div>
