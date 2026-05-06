@@ -52,7 +52,15 @@ export default function AdminProducts() {
     setCategories(c.data ?? []);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const ch = supabase
+      .channel("admin-products-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "categories" }, () => load())
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, []);
 
   const openNew = () => {
     setEditing(null);
