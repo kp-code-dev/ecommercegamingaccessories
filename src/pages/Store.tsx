@@ -4,15 +4,19 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import ProductCard from "@/components/product/ProductCard";
 import Heading from "@/components/ui/Heading";
-import { products } from "@/data/products";
-
-const categories = ["All", "Keyboard", "Mouse", "Cabinet", "Processor", "Graphic"];
+import { useProducts } from "@/hooks/useProducts";
 
 function Store() {
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get("search") || "";
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [wishlist, setWishlist] = useState<string[]>([]);
+  const { products, loading } = useProducts();
+
+  const categories = useMemo(() => {
+    const set = new Set<string>(products.map(p => p.category).filter(Boolean));
+    return ["All", ...Array.from(set)];
+  }, [products]);
 
   const toggleWishlist = (id: string) => {
     setWishlist(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
