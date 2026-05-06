@@ -5,7 +5,7 @@ import {
   FaBolt, FaWifi, FaMouse, FaKeyboard, FaHeadset, FaMicrophone, FaMicrochip,
 } from "react-icons/fa";
 import { useCart } from "@/context/CartContext";
-import { products } from "@/data/products";
+import { useProducts } from "@/hooks/useProducts";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 
