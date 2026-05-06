@@ -5,6 +5,7 @@ import Footer from "@/components/layout/Footer";
 import Heading from "@/components/ui/Heading";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 function Checkout() {
@@ -35,8 +36,39 @@ function Checkout() {
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [placing, setPlacing] = useState(false);
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
+    setPlacing(true);
+    const shippingAddress = `${formData.firstName} ${formData.lastName}, ${formData.address}, ${formData.city} ${formData.zipCode}, ${formData.country}`;
+    const { data: order, error } = await supabase
+      .from("orders")
+      .insert({
+        user_id: user.id,
+        total_amount: grandTotal,
+        status: "pending",
+        shipping_address: shippingAddress,
+      })
+      .select()
+      .single();
+    if (error || !order) {
+      toast.error(error?.message ?? "Failed to place order");
+      setPlacing(false);
+      return;
+    }
+    const items = cart.map((it) => ({
+      order_id: order.id,
+      product_id: it.id,
+      quantity: it.quantity,
+      price_at_purchase: it.price,
+    }));
+    const { error: itemsErr } = await supabase.from("order_items").insert(items);
+    if (itemsErr) {
+      toast.error(itemsErr.message);
+      setPlacing(false);
+      return;
+    }
     toast.success("Order placed successfully! 🎮");
     clearCart();
     navigate("/my-orders");
