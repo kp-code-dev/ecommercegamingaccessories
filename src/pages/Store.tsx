@@ -4,15 +4,19 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import ProductCard from "@/components/product/ProductCard";
 import Heading from "@/components/ui/Heading";
-import { products } from "@/data/products";
-
-const categories = ["All", "Keyboard", "Mouse", "Cabinet", "Processor", "Graphic"];
+import { useProducts } from "@/hooks/useProducts";
 
 function Store() {
   const [searchParams] = useSearchParams();
   const searchQuery = searchParams.get("search") || "";
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [wishlist, setWishlist] = useState<string[]>([]);
+  const { products, loading } = useProducts();
+
+  const categories = useMemo(() => {
+    const set = new Set<string>(products.map(p => p.category).filter(Boolean));
+    return ["All", ...Array.from(set)];
+  }, [products]);
 
   const toggleWishlist = (id: string) => {
     setWishlist(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -24,7 +28,7 @@ function Store() {
       const matchesSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesCategory && matchesSearch;
     });
-  }, [selectedCategory, searchQuery]);
+  }, [products, selectedCategory, searchQuery]);
 
   return (
     <>
@@ -48,11 +52,13 @@ function Store() {
                     : "bg-card text-muted-foreground border-border hover:border-primary hover:text-foreground"
                 }`}
               >
-                {cat === "Graphic" ? "Graphics Cards" : cat === "All" ? "All" : cat + "s"}
+                {cat}
               </button>
             ))}
           </div>
-          {filtered.length === 0 ? (
+          {loading ? (
+            <p className="text-center text-muted-foreground font-body text-lg py-16">Loading products...</p>
+          ) : filtered.length === 0 ? (
             <p className="text-center text-muted-foreground font-body text-lg py-16">No products found.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

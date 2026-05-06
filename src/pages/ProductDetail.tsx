@@ -5,7 +5,7 @@ import {
   FaBolt, FaWifi, FaMouse, FaKeyboard, FaHeadset, FaMicrophone, FaMicrochip,
 } from "react-icons/fa";
 import { useCart } from "@/context/CartContext";
-import { products } from "@/data/products";
+import { useProducts } from "@/hooks/useProducts";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 
@@ -24,6 +24,7 @@ function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { products } = useProducts();
   const [product, setProduct] = useState(products.find(p => p.id === id) || null);
   const [activeImage, setActiveImage] = useState<string>(product?.image ?? "");
 
@@ -32,7 +33,7 @@ function ProductDetail() {
     setProduct(found || null);
     setActiveImage(found?.image ?? "");
     window.scrollTo(0, 0);
-  }, [id]);
+  }, [id, products]);
 
   if (!product) {
     return (
