@@ -226,8 +226,8 @@ function Checkout() {
                   </div>
                 </div>
 
-                <button type="submit" className="w-full bg-gradient-to-r from-primary to-accent text-primary-foreground py-4 rounded-md font-heading font-bold uppercase tracking-wider border-none cursor-pointer hover:shadow-[var(--glow-primary)] transition-all text-sm">
-                  PLACE ORDER — ₹{grandTotal.toLocaleString("en-IN")}
+                <button type="submit" disabled={placing} className="w-full bg-gradient-to-r from-primary to-accent text-primary-foreground py-4 rounded-md font-heading font-bold uppercase tracking-wider border-none cursor-pointer hover:shadow-[var(--glow-primary)] transition-all text-sm disabled:opacity-60">
+                  {placing ? "PLACING..." : `PLACE ORDER — ₹${grandTotal.toLocaleString("en-IN")}`}
                 </button>
               </form>
             </div>
