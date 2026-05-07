@@ -110,6 +110,11 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          payment_method: string | null
+          payment_status: string
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          razorpay_signature: string | null
           shipping_address: string | null
           status: string
           total_amount: number
@@ -119,6 +124,11 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          payment_method?: string | null
+          payment_status?: string
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          razorpay_signature?: string | null
           shipping_address?: string | null
           status?: string
           total_amount: number
@@ -128,6 +138,11 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          payment_method?: string | null
+          payment_status?: string
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          razorpay_signature?: string | null
           shipping_address?: string | null
           status?: string
           total_amount?: number
