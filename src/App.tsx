@@ -13,6 +13,7 @@ import Store from "./pages/Store";
 import CustomBuilds from "./pages/CustomBuilds";
 import ProductDetail from "./pages/ProductDetail";
 import Checkout from "./pages/Checkout";
+import Payment from "./pages/Payment";
 import AboutUs from "./pages/AboutUs";
 import ContactUs from "./pages/ContactUs";
 import FAQs from "./pages/FAQs";
@@ -51,6 +52,7 @@ const App = () => (
                   <Route path="/custom-builds" element={<CustomBuilds />} />
                   <Route path="/product/:id" element={<ProductDetail />} />
                   <Route path="/checkout" element={<Checkout />} />
+                  <Route path="/payment" element={<Payment />} />
                   <Route path="/about-us" element={<AboutUs />} />
                   <Route path="/contact-us" element={<ContactUs />} />
                   <Route path="/faqs" element={<FAQs />} />
