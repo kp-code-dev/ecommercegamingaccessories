@@ -37,26 +37,20 @@ function Checkout() {
   };
 
   const [placing, setPlacing] = useState(false);
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-    setPlacing(true);
+
+  const createOrderRecord = async () => {
     const shippingAddress = `${formData.firstName} ${formData.lastName}, ${formData.address}, ${formData.city} ${formData.zipCode}, ${formData.country}`;
     const { data: order, error } = await supabase
       .from("orders")
       .insert({
-        user_id: user.id,
+        user_id: user!.id,
         total_amount: grandTotal,
         status: "pending",
         shipping_address: shippingAddress,
       })
       .select()
       .single();
-    if (error || !order) {
-      toast.error(error?.message ?? "Failed to place order");
-      setPlacing(false);
-      return;
-    }
+    if (error || !order) throw new Error(error?.message ?? "Failed to place order");
     const items = cart.map((it) => ({
       order_id: order.id,
       product_id: it.id,
@@ -64,14 +58,80 @@ function Checkout() {
       price_at_purchase: it.price,
     }));
     const { error: itemsErr } = await supabase.from("order_items").insert(items);
-    if (itemsErr) {
-      toast.error(itemsErr.message);
+    if (itemsErr) throw new Error(itemsErr.message);
+    return order;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setPlacing(true);
+    try {
+      if (formData.paymentMethod === "cod") {
+        await createOrderRecord();
+        toast.success("Order placed successfully! 🎮");
+        clearCart();
+        navigate("/my-orders");
+        return;
+      }
+
+      // Razorpay flow
+      const { data: rp, error: rpErr } = await supabase.functions.invoke("razorpay-create-order", {
+        body: { amount: grandTotal },
+      });
+      if (rpErr || !rp?.order) throw new Error(rpErr?.message ?? "Payment init failed");
+
+      const Razorpay = (window as any).Razorpay;
+      if (!Razorpay) throw new Error("Razorpay not loaded");
+
+      await new Promise<void>((resolve, reject) => {
+        const rzp = new Razorpay({
+          key: rp.keyId,
+          amount: rp.order.amount,
+          currency: rp.order.currency,
+          order_id: rp.order.id,
+          name: "WORLD OF MSD",
+          description: "Gaming Accessories Order",
+          prefill: {
+            name: `${formData.firstName} ${formData.lastName}`,
+            email: formData.email,
+          },
+          handler: async (response: any) => {
+            try {
+              const { data: v, error: vErr } = await supabase.functions.invoke("razorpay-verify", {
+                body: response,
+              });
+              if (vErr || !v?.valid) throw new Error("Payment verification failed");
+              await createOrderRecord();
+              toast.success("Payment successful! Order placed 🎮");
+              clearCart();
+              navigate("/my-orders");
+              resolve();
+            } catch (err: any) {
+              toast.error(err.message);
+              reject(err);
+            }
+          },
+          modal: {
+            ondismiss: () => {
+              toast.error("Payment cancelled");
+              reject(new Error("dismissed"));
+            },
+          },
+        });
+        rzp.on("payment.failed", (resp: any) => {
+          toast.error(resp.error?.description ?? "Payment failed");
+          reject(new Error("failed"));
+        });
+        rzp.open();
+      });
+    } catch (err: any) {
+      if (err.message !== "dismissed" && err.message !== "failed") {
+        toast.error(err.message ?? "Failed to place order");
+      }
+    } finally {
       setPlacing(false);
-      return;
     }
-    toast.success("Order placed successfully! 🎮");
-    clearCart();
-    navigate("/my-orders");
   };
 
   if (!user) {
