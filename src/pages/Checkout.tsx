@@ -38,7 +38,13 @@ function Checkout() {
 
   const [placing, setPlacing] = useState(false);
 
-  const createOrderRecord = async () => {
+  const createOrderRecord = async (payment?: {
+    payment_method: string;
+    payment_status: string;
+    razorpay_order_id?: string;
+    razorpay_payment_id?: string;
+    razorpay_signature?: string;
+  }) => {
     const shippingAddress = `${formData.firstName} ${formData.lastName}, ${formData.address}, ${formData.city} ${formData.zipCode}, ${formData.country}`;
     const { data: order, error } = await supabase
       .from("orders")
@@ -47,6 +53,11 @@ function Checkout() {
         total_amount: grandTotal,
         status: "pending",
         shipping_address: shippingAddress,
+        payment_method: payment?.payment_method ?? "cod",
+        payment_status: payment?.payment_status ?? "pending",
+        razorpay_order_id: payment?.razorpay_order_id ?? null,
+        razorpay_payment_id: payment?.razorpay_payment_id ?? null,
+        razorpay_signature: payment?.razorpay_signature ?? null,
       })
       .select()
       .single();
@@ -68,7 +79,7 @@ function Checkout() {
     setPlacing(true);
     try {
       if (formData.paymentMethod === "cod") {
-        await createOrderRecord();
+        await createOrderRecord({ payment_method: "cod", payment_status: "pending" });
         toast.success("Order placed successfully! 🎮");
         clearCart();
         navigate("/my-orders");
@@ -102,7 +113,13 @@ function Checkout() {
                 body: response,
               });
               if (vErr || !v?.valid) throw new Error("Payment verification failed");
-              await createOrderRecord();
+              await createOrderRecord({
+                payment_method: formData.paymentMethod,
+                payment_status: "paid",
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              });
               toast.success("Payment successful! Order placed 🎮");
               clearCart();
               navigate("/my-orders");
