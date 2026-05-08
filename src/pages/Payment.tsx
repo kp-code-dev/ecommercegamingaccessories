@@ -65,14 +65,23 @@ function Payment() {
     return d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d;
   };
 
+  const [upiHolder, setUpiHolder] = useState<string | null>(null);
+
   const verifyUpi = async () => {
     setVerifyingUpi(true);
     setUpiVerified(false);
+    setUpiHolder(null);
     try {
-      // Background "verify" — simulates Razorpay VPA validation in the app UI.
-      await new Promise((r) => setTimeout(r, 900));
+      const { data, error } = await supabase.functions.invoke("razorpay-verify-vpa", {
+        body: { vpa: upiId },
+      });
+      if (error) throw new Error(error.message);
+      if (!data?.valid) throw new Error(data?.error ?? "UPI ID not found");
       setUpiVerified(true);
-      toast.success("UPI ID verified");
+      setUpiHolder(data.customer_name ?? null);
+      toast.success(data.customer_name ? `Verified: ${data.customer_name}` : "UPI ID verified");
+    } catch (err: any) {
+      toast.error(err.message ?? "UPI verification failed");
     } finally {
       setVerifyingUpi(false);
     }
@@ -118,6 +127,14 @@ function Payment() {
     setActiveBtn(selected);
     dispatch(setLoading(true));
     try {
+      // For UPI: re-verify VPA on the server right before charging.
+      if (selected === "upi") {
+        const { data: v, error: vErr } = await supabase.functions.invoke("razorpay-verify-vpa", {
+          body: { vpa: upiId },
+        });
+        if (vErr || !v?.valid) throw new Error(v?.error ?? "UPI verification failed");
+      }
+
       // 1. Create Razorpay order in background (no popup shown).
       const { data: rp, error: rpErr } = await supabase.functions.invoke("razorpay-create-order", {
         body: { amount: grandTotal },
@@ -126,9 +143,9 @@ function Payment() {
 
       // 2. Simulated charge processing — Razorpay S2S would happen here using the
       // captured card / UPI input. Keeping UX inline (no third-party popup).
-      await new Promise((r) => setTimeout(r, 1200));
+      await new Promise((r) => setTimeout(r, 1000));
 
-      // 3. Persist order as paid.
+      // 3. Persist order as paid only after verification + charge succeed.
       await persistOrder(selected === "card" ? `card_${brand}` : "upi", rp.order.id);
 
       toast.success("Payment successful 🎮");
@@ -267,7 +284,7 @@ function Payment() {
                       <div className="flex gap-2">
                         <input
                           value={upiId}
-                          onChange={(e) => { dispatch(setUpiId(e.target.value.trim())); setUpiVerified(false); }}
+                          onChange={(e) => { dispatch(setUpiId(e.target.value.trim())); setUpiVerified(false); setUpiHolder(null); }}
                           placeholder="username@bank"
                           className={inputCls}
                         />
@@ -281,9 +298,15 @@ function Payment() {
                             upiVerified ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Verified</> : "Verify"}
                         </button>
                       </div>
-                      <p className="text-muted-foreground text-xs mt-2 font-body">
-                        Verify your UPI ID before paying.
-                      </p>
+                      {upiVerified && upiHolder ? (
+                        <p className="text-emerald-500 text-xs mt-2 font-body flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Account holder: <span className="font-bold">{upiHolder}</span>
+                        </p>
+                      ) : (
+                        <p className="text-muted-foreground text-xs mt-2 font-body">
+                          Verify your UPI ID before paying.
+                        </p>
+                      )}
                     </div>
 
                     <button
