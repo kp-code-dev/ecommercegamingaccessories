@@ -284,7 +284,7 @@ function Payment() {
                       <div className="flex gap-2">
                         <input
                           value={upiId}
-                          onChange={(e) => { dispatch(setUpiId(e.target.value.trim())); setUpiVerified(false); }}
+                          onChange={(e) => { dispatch(setUpiId(e.target.value.trim())); setUpiVerified(false); setUpiHolder(null); }}
                           placeholder="username@bank"
                           className={inputCls}
                         />
@@ -298,9 +298,15 @@ function Payment() {
                             upiVerified ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Verified</> : "Verify"}
                         </button>
                       </div>
-                      <p className="text-muted-foreground text-xs mt-2 font-body">
-                        Verify your UPI ID before paying.
-                      </p>
+                      {upiVerified && upiHolder ? (
+                        <p className="text-emerald-500 text-xs mt-2 font-body flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Account holder: <span className="font-bold">{upiHolder}</span>
+                        </p>
+                      ) : (
+                        <p className="text-muted-foreground text-xs mt-2 font-body">
+                          Verify your UPI ID before paying.
+                        </p>
+                      )}
                     </div>
 
                     <button
