@@ -65,14 +65,23 @@ function Payment() {
     return d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d;
   };
 
+  const [upiHolder, setUpiHolder] = useState<string | null>(null);
+
   const verifyUpi = async () => {
     setVerifyingUpi(true);
     setUpiVerified(false);
+    setUpiHolder(null);
     try {
-      // Background "verify" — simulates Razorpay VPA validation in the app UI.
-      await new Promise((r) => setTimeout(r, 900));
+      const { data, error } = await supabase.functions.invoke("razorpay-verify-vpa", {
+        body: { vpa: upiId },
+      });
+      if (error) throw new Error(error.message);
+      if (!data?.valid) throw new Error(data?.error ?? "UPI ID not found");
       setUpiVerified(true);
-      toast.success("UPI ID verified");
+      setUpiHolder(data.customer_name ?? null);
+      toast.success(data.customer_name ? `Verified: ${data.customer_name}` : "UPI ID verified");
+    } catch (err: any) {
+      toast.error(err.message ?? "UPI verification failed");
     } finally {
       setVerifyingUpi(false);
     }
