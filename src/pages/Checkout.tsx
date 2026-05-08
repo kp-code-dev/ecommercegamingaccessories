@@ -5,11 +5,10 @@ import Footer from "@/components/layout/Footer";
 import Heading from "@/components/ui/Heading";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { ChevronRight } from "lucide-react";
 
 function Checkout() {
-  const { cart, cartTotal, clearCart } = useCart();
+  const { cart, cartTotal } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -20,135 +19,19 @@ function Checkout() {
     city: "",
     zipCode: "",
     country: "",
-    paymentMethod: "creditCard",
-    cardNumber: "",
-    expiryDate: "",
-    cvv: "",
-    upiId: "",
   });
 
   const shipping = cartTotal > 5000 ? 0 : 500;
-  const codCharge = formData.paymentMethod === "cod" ? 50 : 0;
-  const grandTotal = cartTotal + shipping + codCharge;
+  const grandTotal = cartTotal + shipping;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
 
-  const [placing, setPlacing] = useState(false);
-
-  const createOrderRecord = async (payment?: {
-    payment_method: string;
-    payment_status: string;
-    razorpay_order_id?: string;
-    razorpay_payment_id?: string;
-    razorpay_signature?: string;
-  }) => {
-    const shippingAddress = `${formData.firstName} ${formData.lastName}, ${formData.address}, ${formData.city} ${formData.zipCode}, ${formData.country}`;
-    const { data: order, error } = await supabase
-      .from("orders")
-      .insert({
-        user_id: user!.id,
-        total_amount: grandTotal,
-        status: "pending",
-        shipping_address: shippingAddress,
-        payment_method: payment?.payment_method ?? "cod",
-        payment_status: payment?.payment_status ?? "pending",
-        razorpay_order_id: payment?.razorpay_order_id ?? null,
-        razorpay_payment_id: payment?.razorpay_payment_id ?? null,
-        razorpay_signature: payment?.razorpay_signature ?? null,
-      })
-      .select()
-      .single();
-    if (error || !order) throw new Error(error?.message ?? "Failed to place order");
-    const items = cart.map((it) => ({
-      order_id: order.id,
-      product_id: it.id,
-      quantity: it.quantity,
-      price_at_purchase: it.price,
-    }));
-    const { error: itemsErr } = await supabase.from("order_items").insert(items);
-    if (itemsErr) throw new Error(itemsErr.message);
-    return order;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleContinue = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
-    setPlacing(true);
-    try {
-      if (formData.paymentMethod === "cod") {
-        await createOrderRecord({ payment_method: "cod", payment_status: "pending" });
-        toast.success("Order placed successfully! 🎮");
-        clearCart();
-        navigate("/my-orders");
-        return;
-      }
-
-      // Razorpay flow
-      const { data: rp, error: rpErr } = await supabase.functions.invoke("razorpay-create-order", {
-        body: { amount: grandTotal },
-      });
-      if (rpErr || !rp?.order) throw new Error(rpErr?.message ?? "Payment init failed");
-
-      const Razorpay = (window as any).Razorpay;
-      if (!Razorpay) throw new Error("Razorpay not loaded");
-
-      await new Promise<void>((resolve, reject) => {
-        const rzp = new Razorpay({
-          key: rp.keyId,
-          amount: rp.order.amount,
-          currency: rp.order.currency,
-          order_id: rp.order.id,
-          name: "WORLD OF MSD",
-          description: "Gaming Accessories Order",
-          prefill: {
-            name: `${formData.firstName} ${formData.lastName}`,
-            email: formData.email,
-          },
-          handler: async (response: any) => {
-            try {
-              const { data: v, error: vErr } = await supabase.functions.invoke("razorpay-verify", {
-                body: response,
-              });
-              if (vErr || !v?.valid) throw new Error("Payment verification failed");
-              await createOrderRecord({
-                payment_method: formData.paymentMethod,
-                payment_status: "paid",
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-              });
-              toast.success("Payment successful! Order placed 🎮");
-              clearCart();
-              navigate("/my-orders");
-              resolve();
-            } catch (err: any) {
-              toast.error(err.message);
-              reject(err);
-            }
-          },
-          modal: {
-            ondismiss: () => {
-              toast.error("Payment cancelled");
-              reject(new Error("dismissed"));
-            },
-          },
-        });
-        rzp.on("payment.failed", (resp: any) => {
-          toast.error(resp.error?.description ?? "Payment failed");
-          reject(new Error("failed"));
-        });
-        rzp.open();
-      });
-    } catch (err: any) {
-      if (err.message !== "dismissed" && err.message !== "failed") {
-        toast.error(err.message ?? "Failed to place order");
-      }
-    } finally {
-      setPlacing(false);
-    }
+    navigate("/payment", { state: { billing: formData, amount: grandTotal } });
   };
 
   if (!user) {
@@ -196,9 +79,8 @@ function Checkout() {
         <div className="max-w-6xl mx-auto px-4">
           <Heading title="Checkout" />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Billing Form */}
             <div className="lg:col-span-2">
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleContinue} className="space-y-6">
                 <div className="bg-card border border-border rounded-lg p-6">
                   <h2 className="font-heading text-sm uppercase text-primary tracking-wider mb-4">Billing Details</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -241,75 +123,15 @@ function Checkout() {
                   </div>
                 </div>
 
-                {/* Payment Method */}
-                <div className="bg-card border border-border rounded-lg p-6">
-                  <h2 className="font-heading text-sm uppercase text-primary tracking-wider mb-4">Payment Method</h2>
-                  <div className="space-y-4">
-                    {/* Credit Card */}
-                    <div className="border border-border rounded-md p-4">
-                      <label className="flex items-center gap-3 cursor-pointer font-heading text-sm text-foreground">
-                        <input type="radio" name="paymentMethod" value="creditCard" checked={formData.paymentMethod === "creditCard"} onChange={handleInputChange} className="accent-primary" />
-                        Credit / Debit Card
-                      </label>
-                      {formData.paymentMethod === "creditCard" && (
-                        <div className="mt-4 ml-6 space-y-3">
-                          <div>
-                            <label className={labelClass}>Card Number</label>
-                            <input type="text" name="cardNumber" value={formData.cardNumber} onChange={handleInputChange} placeholder="XXXX XXXX XXXX XXXX" maxLength={16} required className={inputClass} />
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className={labelClass}>Expiry Date</label>
-                              <input type="text" name="expiryDate" value={formData.expiryDate} onChange={handleInputChange} placeholder="MM/YY" maxLength={5} required className={inputClass} />
-                            </div>
-                            <div>
-                              <label className={labelClass}>CVV</label>
-                              <input type="password" name="cvv" value={formData.cvv} onChange={handleInputChange} placeholder="123" maxLength={3} required className={inputClass} />
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* UPI */}
-                    <div className="border border-border rounded-md p-4">
-                      <label className="flex items-center gap-3 cursor-pointer font-heading text-sm text-foreground">
-                        <input type="radio" name="paymentMethod" value="upi" checked={formData.paymentMethod === "upi"} onChange={handleInputChange} className="accent-primary" />
-                        UPI / Net Banking
-                      </label>
-                      {formData.paymentMethod === "upi" && (
-                        <div className="mt-4 ml-6 flex gap-3 items-end">
-                          <div className="flex-1">
-                            <label className={labelClass}>UPI ID</label>
-                            <input type="text" name="upiId" value={formData.upiId} onChange={handleInputChange} placeholder="username@bank" required className={inputClass} />
-                          </div>
-                          <button type="button" className="bg-primary text-primary-foreground px-5 py-3 rounded-md font-heading font-bold text-xs uppercase border-none cursor-pointer">
-                            Verify
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* COD */}
-                    <div className="border border-border rounded-md p-4">
-                      <label className="flex items-center gap-3 cursor-pointer font-heading text-sm text-foreground">
-                        <input type="radio" name="paymentMethod" value="cod" checked={formData.paymentMethod === "cod"} onChange={handleInputChange} className="accent-primary" />
-                        Cash on Delivery
-                      </label>
-                      {formData.paymentMethod === "cod" && (
-                        <p className="mt-3 ml-6 text-primary text-sm font-body">ⓘ A flat ₹50 COD handling fee will be added to your total.</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <button type="submit" disabled={placing} className="w-full bg-gradient-to-r from-primary to-accent text-primary-foreground py-4 rounded-md font-heading font-bold uppercase tracking-wider border-none cursor-pointer hover:shadow-[var(--glow-primary)] transition-all text-sm disabled:opacity-60">
-                  {placing ? "PLACING..." : `PLACE ORDER — ₹${grandTotal.toLocaleString("en-IN")}`}
+                <button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-primary to-accent text-primary-foreground py-4 rounded-md font-heading font-bold uppercase tracking-wider border-none cursor-pointer hover:shadow-[var(--glow-primary)] transition-all text-sm flex items-center justify-center gap-2"
+                >
+                  Continue to Payment <ChevronRight className="w-4 h-4" />
                 </button>
               </form>
             </div>
 
-            {/* Order Summary */}
             <div>
               <div className="bg-card border border-border rounded-lg p-6 sticky top-28">
                 <h2 className="font-heading text-sm uppercase text-primary tracking-wider mb-4">Order Summary</h2>
@@ -334,12 +156,6 @@ function Checkout() {
                     <span>Shipping</span>
                     <span>{shipping === 0 ? "Free" : `₹${shipping}`}</span>
                   </div>
-                  {codCharge > 0 && (
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>COD Fee</span>
-                      <span>₹{codCharge}</span>
-                    </div>
-                  )}
                   <div className="flex justify-between font-heading font-bold text-lg text-foreground pt-2 border-t border-border">
                     <span>Total</span>
                     <span className="text-primary">₹{grandTotal.toLocaleString("en-IN")}</span>
