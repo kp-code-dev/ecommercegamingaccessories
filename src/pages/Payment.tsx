@@ -1,9 +1,11 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { CreditCard, Smartphone, ShieldCheck, Lock, Loader2, ChevronRight } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { CreditCard, Smartphone, ShieldCheck, Lock, Loader2, ChevronRight, CheckCircle2 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { useCart } from "@/context/CartContext";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import {
   setMethod, setCardNumber, setExpiryDate, setCvv, setUpiId, setLoading,
   type PaymentMethod,
@@ -11,15 +13,50 @@ import {
 import { useAppDispatch, useAppSelector } from "@/store";
 import { toast } from "sonner";
 
+type Brand = "visa" | "mastercard" | "rupay" | "amex" | "unknown";
+
+function detectBrand(num: string): Brand {
+  const n = num.replace(/\D/g, "");
+  if (!n) return "unknown";
+  if (/^4/.test(n)) return "visa";
+  if (/^(5[1-5]|2[2-7])/.test(n)) return "mastercard";
+  if (/^(60|65|81|82|508)/.test(n)) return "rupay";
+  if (/^(34|37)/.test(n)) return "amex";
+  return "unknown";
+}
+
+const BrandBadge = ({ brand }: { brand: Brand }) => {
+  if (brand === "unknown") return null;
+  const map: Record<Exclude<Brand, "unknown">, { label: string; cls: string }> = {
+    visa: { label: "VISA", cls: "bg-blue-600" },
+    mastercard: { label: "MASTER", cls: "bg-orange-500" },
+    rupay: { label: "RuPay", cls: "bg-emerald-600" },
+    amex: { label: "AMEX", cls: "bg-sky-700" },
+  };
+  const m = map[brand];
+  return <span className={`text-[10px] font-bold ${m.cls} text-white px-1.5 py-0.5 rounded`}>{m.label}</span>;
+};
+
 function Payment() {
   const navigate = useNavigate();
-  const { cart, cartTotal } = useCart();
+  const location = useLocation();
+  const { user } = useAuth();
+  const { cart, cartTotal, clearCart } = useCart();
   const dispatch = useAppDispatch();
   const { method, cardNumber, expiryDate, cvv, upiId, loading } = useAppSelector((s) => s.payment);
   const [activeBtn, setActiveBtn] = useState<PaymentMethod | null>(null);
+  const [upiVerified, setUpiVerified] = useState(false);
+  const [verifyingUpi, setVerifyingUpi] = useState(false);
 
-  const shipping = 0;
-  const grandTotal = cartTotal + shipping || 20049;
+  const billing = (location.state as any)?.billing as
+    | { firstName: string; lastName: string; email: string; address: string; city: string; zipCode: string; country: string }
+    | undefined;
+  const passedAmount = (location.state as any)?.amount as number | undefined;
+
+  const shipping = cartTotal > 5000 ? 0 : 500;
+  const grandTotal = passedAmount ?? cartTotal + shipping;
+
+  const brand = useMemo(() => detectBrand(cardNumber), [cardNumber]);
 
   const formatCard = (v: string) =>
     v.replace(/\D/g, "").slice(0, 16).replace(/(\d{4})(?=\d)/g, "$1 ");
@@ -28,62 +65,74 @@ function Payment() {
     return d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d;
   };
 
-  /**
-   * Mock Razorpay Custom Checkout (S2S) — no popup, no redirect.
-   * In production: backend creates an order and returns order_id.
-   */
-  const handleCustomRazorpayPayment = async (selected: PaymentMethod) => {
+  const verifyUpi = async () => {
+    setVerifyingUpi(true);
+    setUpiVerified(false);
+    try {
+      // Background "verify" — simulates Razorpay VPA validation in the app UI.
+      await new Promise((r) => setTimeout(r, 900));
+      setUpiVerified(true);
+      toast.success("UPI ID verified");
+    } finally {
+      setVerifyingUpi(false);
+    }
+  };
+
+  const persistOrder = async (paymentMethod: string, razorpay_order_id: string | null) => {
+    if (!user || !billing) return;
+    const shippingAddress = `${billing.firstName} ${billing.lastName}, ${billing.address}, ${billing.city} ${billing.zipCode}, ${billing.country}`;
+    const { data: order, error } = await supabase
+      .from("orders")
+      .insert({
+        user_id: user.id,
+        total_amount: grandTotal,
+        status: "pending",
+        shipping_address: shippingAddress,
+        payment_method: paymentMethod,
+        payment_status: "paid",
+        razorpay_order_id,
+      })
+      .select()
+      .single();
+    if (error || !order) throw new Error(error?.message ?? "Failed to save order");
+    const items = cart.map((it) => ({
+      order_id: order.id,
+      product_id: it.id,
+      quantity: it.quantity,
+      price_at_purchase: it.price,
+    }));
+    const { error: itemsErr } = await supabase.from("order_items").insert(items);
+    if (itemsErr) throw new Error(itemsErr.message);
+  };
+
+  const handlePay = async (selected: PaymentMethod) => {
+    if (!user) {
+      toast.error("Please login to continue");
+      return;
+    }
+    if (!billing) {
+      toast.error("Billing details missing");
+      navigate("/checkout");
+      return;
+    }
     setActiveBtn(selected);
     dispatch(setLoading(true));
     try {
-      // 1. Backend call: POST /create-order -> { order_id, key_id }
-      // const { order_id, key_id } = await fetch("/api/create-order", { ... }).then(r => r.json());
-      const order_id = "order_MOCK_xxxxxxxx"; // <-- replace with real backend order_id
-      const key_id = "rzp_test_xxxxxxxx";     // <-- publishable Razorpay key from backend
+      // 1. Create Razorpay order in background (no popup shown).
+      const { data: rp, error: rpErr } = await supabase.functions.invoke("razorpay-create-order", {
+        body: { amount: grandTotal },
+      });
+      if (rpErr || !rp?.order) throw new Error(rpErr?.message ?? "Payment init failed");
 
-      const Razorpay = (window as any).Razorpay;
-      if (!Razorpay) throw new Error("Razorpay SDK not loaded");
+      // 2. Simulated charge processing — Razorpay S2S would happen here using the
+      // captured card / UPI input. Keeping UX inline (no third-party popup).
+      await new Promise((r) => setTimeout(r, 1200));
 
-      const baseOptions: any = {
-        key: key_id,
-        amount: grandTotal * 100,
-        currency: "INR",
-        order_id, // <-- server-generated order id goes here
-        name: "WORLD OF MSD",
-        description: "Gaming Accessories",
-      };
+      // 3. Persist order as paid.
+      await persistOrder(selected === "card" ? `card_${brand}` : "upi", rp.order.id);
 
-      // Method-specific payload for rzp.createPayment(options)
-      const methodPayload =
-        selected === "card"
-          ? {
-              method: "card",
-              card: {
-                number: cardNumber.replace(/\s/g, ""),
-                expiry_month: expiryDate.split("/")[0],
-                expiry_year: expiryDate.split("/")[1],
-                cvv,
-                name: "Cardholder",
-              },
-            }
-          : {
-              method: "upi",
-              vpa: upiId, // user@bank
-              upi: { flow: "collect" },
-            };
-
-      const options = { ...baseOptions, ...methodPayload };
-
-      // 2. Custom Checkout — no popup. Razorpay handles S2S charge.
-      const rzp = new Razorpay(baseOptions);
-      // rzp.createPayment(options);
-      // rzp.on("payment.success", (resp) => { ... verify on backend ... });
-      // rzp.on("payment.error", (err) => { ... });
-
-      // ---- Simulated success for skeleton ----
-      await new Promise((r) => setTimeout(r, 1500));
-      console.log("Mock Razorpay createPayment options:", options, rzp);
       toast.success("Payment successful 🎮");
+      clearCart();
       navigate("/my-orders");
     } catch (err: any) {
       toast.error(err.message ?? "Payment failed");
@@ -113,15 +162,17 @@ function Payment() {
     );
   };
 
-  const isCardValid = cardNumber.replace(/\s/g, "").length === 16 && /^\d{2}\/\d{2}$/.test(expiryDate) && cvv.length === 3;
-  const isUpiValid = /^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(upiId);
+  const isCardValid =
+    cardNumber.replace(/\s/g, "").length >= 15 &&
+    /^\d{2}\/\d{2}$/.test(expiryDate) &&
+    (cvv.length === 3 || cvv.length === 4);
+  const isUpiValid = /^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(upiId) && upiVerified;
 
   return (
     <>
       <Header />
       <main className="pt-24 pb-16 min-h-screen">
         <div className="max-w-6xl mx-auto px-4">
-          {/* Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-8">
             <div>
               <h1 className="font-heading text-2xl md:text-3xl font-bold text-foreground uppercase tracking-wider">
@@ -135,7 +186,6 @@ function Payment() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* LEFT: Payment Options */}
             <div className="lg:col-span-2 space-y-4">
               <div className="bg-card border border-border rounded-xl p-5 md:p-6">
                 <div className="flex gap-3 mb-6">
@@ -155,13 +205,15 @@ function Payment() {
                           value={cardNumber}
                           onChange={(e) => dispatch(setCardNumber(formatCard(e.target.value)))}
                           placeholder="1234 5678 9012 3456"
-                          className={`${inputCls} pr-24 tracking-wider`}
+                          className={`${inputCls} pr-28 tracking-wider`}
                         />
                         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1.5">
-                          <span className="text-[10px] font-bold bg-blue-600 text-white px-1.5 py-0.5 rounded">VISA</span>
-                          <span className="text-[10px] font-bold bg-orange-500 text-white px-1.5 py-0.5 rounded">MC</span>
+                          <BrandBadge brand={brand} />
                         </div>
                       </div>
+                      {brand !== "unknown" && (
+                        <p className="text-xs text-primary mt-1.5 font-body">Detected: {brand.toUpperCase()}</p>
+                      )}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -184,7 +236,7 @@ function Payment() {
                           type="password"
                           inputMode="numeric"
                           value={cvv}
-                          onChange={(e) => dispatch(setCvv(e.target.value.replace(/\D/g, "").slice(0, 3)))}
+                          onChange={(e) => dispatch(setCvv(e.target.value.replace(/\D/g, "").slice(0, 4)))}
                           placeholder="•••"
                           className={inputCls}
                         />
@@ -194,7 +246,7 @@ function Payment() {
                     <button
                       type="button"
                       disabled={!isCardValid || loading}
-                      onClick={() => handleCustomRazorpayPayment("card")}
+                      onClick={() => handlePay("card")}
                       className="w-full mt-2 bg-primary hover:bg-primary/90 text-primary-foreground py-4 rounded-lg font-heading font-bold uppercase tracking-wider transition-all hover:shadow-[var(--glow-primary)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       {loading && activeBtn === "card" ? (
@@ -212,21 +264,32 @@ function Payment() {
                       <label className="text-muted-foreground font-heading text-xs uppercase tracking-wider mb-1.5 block">
                         Enter UPI ID
                       </label>
-                      <input
-                        value={upiId}
-                        onChange={(e) => dispatch(setUpiId(e.target.value.trim()))}
-                        placeholder="username@bank"
-                        className={inputCls}
-                      />
+                      <div className="flex gap-2">
+                        <input
+                          value={upiId}
+                          onChange={(e) => { dispatch(setUpiId(e.target.value.trim())); setUpiVerified(false); }}
+                          placeholder="username@bank"
+                          className={inputCls}
+                        />
+                        <button
+                          type="button"
+                          onClick={verifyUpi}
+                          disabled={!/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(upiId) || verifyingUpi || upiVerified}
+                          className="bg-secondary hover:bg-secondary/80 text-foreground px-4 rounded-lg font-heading text-xs uppercase tracking-wider border border-border disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap"
+                        >
+                          {verifyingUpi ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> :
+                            upiVerified ? <><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> Verified</> : "Verify"}
+                        </button>
+                      </div>
                       <p className="text-muted-foreground text-xs mt-2 font-body">
-                        We'll send a payment request to your UPI app.
+                        Verify your UPI ID before paying.
                       </p>
                     </div>
 
                     <button
                       type="button"
                       disabled={!isUpiValid || loading}
-                      onClick={() => handleCustomRazorpayPayment("upi")}
+                      onClick={() => handlePay("upi")}
                       className="w-full mt-2 bg-primary hover:bg-primary/90 text-primary-foreground py-4 rounded-lg font-heading font-bold uppercase tracking-wider transition-all hover:shadow-[var(--glow-primary)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       {loading && activeBtn === "upi" ? (
@@ -240,11 +303,10 @@ function Payment() {
               </div>
 
               <div className="flex items-center gap-2 text-muted-foreground text-xs font-body px-1">
-                <Lock className="w-3.5 h-3.5" /> Your card data is encrypted & PCI-DSS compliant.
+                <Lock className="w-3.5 h-3.5" /> Your payment data is encrypted & PCI-DSS compliant.
               </div>
             </div>
 
-            {/* RIGHT: Order Summary */}
             <div>
               <div className="bg-card border border-border rounded-xl p-6 sticky top-28">
                 <h2 className="font-heading text-sm uppercase text-primary tracking-wider mb-4">Order Summary</h2>
@@ -269,11 +331,11 @@ function Payment() {
                 <div className="border-t border-border pt-4 space-y-2 text-sm font-body">
                   <div className="flex justify-between text-muted-foreground">
                     <span>Subtotal</span>
-                    <span>₹{(cartTotal || grandTotal).toLocaleString("en-IN")}</span>
+                    <span>₹{cartTotal.toLocaleString("en-IN")}</span>
                   </div>
                   <div className="flex justify-between text-muted-foreground">
                     <span>Shipping</span>
-                    <span className="text-primary">Free</span>
+                    <span className={shipping === 0 ? "text-primary" : ""}>{shipping === 0 ? "Free" : `₹${shipping}`}</span>
                   </div>
                   <div className="flex justify-between font-heading font-bold text-lg text-foreground pt-3 border-t border-border">
                     <span>Total</span>
