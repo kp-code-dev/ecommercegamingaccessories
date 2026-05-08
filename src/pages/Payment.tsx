@@ -127,6 +127,14 @@ function Payment() {
     setActiveBtn(selected);
     dispatch(setLoading(true));
     try {
+      // For UPI: re-verify VPA on the server right before charging.
+      if (selected === "upi") {
+        const { data: v, error: vErr } = await supabase.functions.invoke("razorpay-verify-vpa", {
+          body: { vpa: upiId },
+        });
+        if (vErr || !v?.valid) throw new Error(v?.error ?? "UPI verification failed");
+      }
+
       // 1. Create Razorpay order in background (no popup shown).
       const { data: rp, error: rpErr } = await supabase.functions.invoke("razorpay-create-order", {
         body: { amount: grandTotal },
@@ -135,9 +143,9 @@ function Payment() {
 
       // 2. Simulated charge processing — Razorpay S2S would happen here using the
       // captured card / UPI input. Keeping UX inline (no third-party popup).
-      await new Promise((r) => setTimeout(r, 1200));
+      await new Promise((r) => setTimeout(r, 1000));
 
-      // 3. Persist order as paid.
+      // 3. Persist order as paid only after verification + charge succeed.
       await persistOrder(selected === "card" ? `card_${brand}` : "upi", rp.order.id);
 
       toast.success("Payment successful 🎮");
